@@ -1,0 +1,1210 @@
+\documentclass[14pt, russian]{extarticle}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage{babel}
+\usepackage[a4paper,
+left=2cm,
+right=2cm,
+top=2cm,
+bottom=2cm]{geometry}
+\usepackage{color}
+\usepackage{mathtools}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{tocloft}
+\usepackage{indentfirst}
+\usepackage{enumitem}
+
+\setlength{\parindent}{0.8cm}
+\setlength{\parskip}{0.4cm}
+\renewcommand{\contentsname}{}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=none,
+	language=C++,
+	aboveskip=3mm,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	basicstyle={\small\ttfamily},
+	numbers=none,
+	numberstyle=\tiny\color{gray},
+	keywordstyle=\color{blue},
+	commentstyle=\color{dkgreen},
+	stringstyle=\color{mauve},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=4
+}
+
+\title{}
+\author{}
+\date{}
+
+\begin{document}
+	\begin{titlepage}
+		\begin{center}
+			{\bfseries МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ \\
+				РОССИЙСКОЙ ФЕДЕРАЦИИ}
+			\\
+			Федеральное государственное автономное образовательное учреждение высшего образования 
+			\\
+			{\bfseries «Национальный исследовательский Нижегородский государственный университет им. Н.И. Лобачевского»\\(ННГУ)
+				\\Институт информационных технологий, математики и механики} \\
+		\end{center}
+		
+		\vspace{8em}
+		
+		\begin{center}
+			ОТЧЁТ \\ по лабораторной работе \\
+			«Умножение разреженных матриц. Элементы типа double. Формат хранения матрицы – строковый (CRS).»
+		\end{center}
+		
+		\vspace{5em}
+		
+		
+		\begin{flushright}
+			{\bfseries Выполнила:} студентка группы 382008-1\\Пашина А.И.\\ 
+			{\bfseries Преподаватель:} ст. науч. сотр.,к.т.н.\\Сысоев А.В.\\
+		\end{flushright}
+		
+		
+		\vspace{\fill}
+		
+		\begin{center}
+			Нижний Новгород\\2023
+		\end{center}
+		
+	\end{titlepage}
+	
+	% Содержание
+	\tableofcontents
+	\thispagestyle{empty}
+	\newpage
+	
+	\pagestyle{plain}
+	\setcounter{page}{3}
+
+	% Введение
+	\section{Введение}
+    
+    Разреженные матрицы - это матрицы, в которых среди элементов преобладают нулевые значения. Подобные матрицы нередко встречаются во многих областях научных вычислений. Например, часто попытки формулировки задач в социологии, экологии и бихевиоральных науках приводят к системе уравнений, в которых матрицы коэффициентов имеют разреженный вид и большие размеры.  Существуют различные форматы хранения матриц. Но работая с разреженными матрицами большого размера, например 100{.}000$\times$500{.}000, будет нерационально тратить ресурсы на хранение всех нулевых элементов.
+
+    Один из способов решения данной проблемы - строковый(CRS) формат хранения. В нём матрица представляется в виде 3 векторов: вектора ненулевых значений матрицы, вектора столбцов, где размещены ненулевые элементы, и вектора индексов начала каждой строки. Стоит отметить, что одной из наиболее популярных операций над матрицами является умножение.
+
+	В данной работе рассмотрены последовательная и две параллельные (при помощи библиотек OpenMP и TBB) реализации задачи умножения разреженных матриц строкового формата с элементами вещественного типа. Также по результатам работы были сформулированы выводы о скоростях работы реализованных решений.
+	\newpage
+
+	\section{Постановка задачи}
+	Необходимо реализовать три варианта программы для решения задачи умножения разреженных матриц, которые представлены в строковом(CRS) формате хранения и содержат элементы типа double, на языке C$++$: 
+    \begin{itemize}
+    \item{последовательный вариант,}
+    \item{параллельный вариант с использованием библиотеки OpenMP,}
+    \item{параллельный вариант c использованием библиотеки TBB.}
+    \end{itemize}
+	
+	Результатом работы для каждого из вариантов должна быть матрица в строковом формате, хранящая элементы типа double и являющаяся произведением заданных матриц.
+	
+	Последовательная версия алгоритма будет реализована на основе стандартных инструментов языка, для параллельной версии будут задействованы библиотеки. При создании параллельных реализаций с применением OpenMP и TBB нужно учесть, что программа будет выполняться на различном количестве потоков. Проверка корректности работы программы будет осуществляться с помощью фреймворка GoogleTest. Количество тестов должно быть не менее 5.
+	
+	На основе полученных результатов необходимо сравнить скорости выполнения каждого варианта программы и сделать выводы.
+	
+	\newpage
+
+	\section{Описание алгоритма}
+ 
+	\noindent\textbf{Входные данные:}\\
+	\indent  Пусть А и В – разреженные матрицы, содержащие вещественные элементы и представленные в формате CRS. Матрица А имеет размеры - $m\times n$, матрица B - $n\times k$. Отметим, что число столбцов первой матрицы должно совпадать с числом строк второй матрицы. Строковый формат матриц подразумевает хранение матрицы в качестве 3 векторов:
+     \begin{enumerate}
+            \item  valueCRS – вектор ненулевых элементов матрицы
+            \item  colsCRS – вектор столбцов матрицы, в которых хранятся ненулевые элементы
+            \item  pointerCRS – вектор индексов первых элементов каждой строки
+     \end{enumerate}
+	\noindent\textbf{Алгоритм:}\\
+    \indent Первым шагом к алгоритма умножения матриц будет транспонирование правой матрицы. 
+    Транспонирование - это математическая операция над матрицей, подразумевающая замену строк матрицы на столбцы. 
+    
+    \indent Затем необходимо получить результирующую матрицу, на основе скалярных произведений $i$-ой строки левой матрицы и $j$-строки транспонированной матрицы. 
+    
+    \indent Отличительной особенностью строкового формата хранения матрицы от стандартной формы является возможность выполнять итерации только по ненулевым элементам строк. Это позволяет существенно ускорить выполнение.
+    
+	\noindent\textbf{Результат:}\\
+	\indent  Результатом произведения матриц А и В будет матрица С, имеющая размеры $m \times k$, чьи элементы являются скалярным произведением строк матрицы А и столбцов матрицы B. Элементы этой матрицы имеют вещественный тип.
+ \newpage
+	
+	\section{Описание схемы распараллеливания}
+    
+    \indent	В нашем алгоритме  для распараллеливания подходит второй шаг  - перемножение матрицы на транспонированную.
+    
+	\indent Идея распараллеливания этой задачи основывается на естественном параллелизме, то есть распределении строк между потоками. Во внешем цикле будет выполняться перебор строк матрицы А,  и далее будет происходить независимая работа с ними.
+ 
+	\indent По окончании расчёта в результирующую матрицу записываются подсчитанные данные для вектора ненулевых элементов, вектора столбцов и вектора индексов первых элементов каждой строки.
+
+	\newpage
+
+	\section{Описание OpenMP-версии программы}
+	
+	\indent OpenMP-версия программы предоставляет пользователю библиотеку\\* \emph{CRSMatrix\_omp.h}. Эта библиотека содержит класс матрицы с элементами типа double и CRS-форматом хранения, в том числе параллельную реализацию умножения таких матриц \emph{MatrixMultOMP}, а также метод транспонирования и вспомогательные для тестирования функции. 
+
+    Параллельная версия для метода умножения CRS-матриц с вещественными элементами принимает на вход уже транспонированную матрицу. В методе проверяется корректность размеров, указанных у матриц. Также вводятся служебные векторы \emph{locCol} и \emph{locVal}, чья длина равна количеству строк левой матрицы. Помимо этого вводятся переменные: \emph{resRows}, равная числу строк левой матрицы, и \emph{resCols}, соответствующая число колонок правой матрицы. Затем с помощью директив \emph{parallel} и \emph{for} выполняет параллельное умножение матриц. Стоит отметить, что на библиотеку OpenMP возложено распределение задач, и содержание цикла сходно с последовательной версией. Вне параллельной области объединяются части результирующей матрицы, полученные потоками.
+    
+    В файле \emph{main.cpp} внутри тестов проверяется корректность работы методов для матриц строкового формата, включая параллельную версию умножения матриц. Тесты сравнивают значения, возвращенные методами класса, с уже известными решениями математических примеров, с решениями для аналогичной матрицы векторного формата, а также проверяется возникновение или отсутствие ошибки при запуске методов.
+	\newpage
+	
+	\section{Описание TBB-версии программы}
+
+    \indent TBB-версия программы предоставляет пользователю библиотеку\\* 
+    \emph{CRSMatrix\_tbb.h}, которая содежит класс CRS-матрицы, метод параллельного умножения матриц строкого формата \emph{MatrixMultTBB} и вспомогательные для тестирования методы. 
+
+    \indent В этой реализации изменениям подвергся только метод параллельного умножения. В его начале осуществляется проверка корректности размеров матриц-множителей. Вводятся вспомогательные векторы \emph{locCol} и \emph{locVal}, чья длина равна количеству строк левой матрицы. Помимо этого вводятся переменные: \emph{resRows} и \emph{resCols}, равные числу строк левой матрицы и числу столбцов правой матрицы соответственно. Размер порции для расщепления будет задаваться переменной \emph{size\_part}.
+
+    \indent Для создания этого метода были задействованы следующие элементы библиотеки:
+     \begin{enumerate}[topsep=0pt, labelwidth=!, labelindent=0pt]
+		\item шаблонная функция \emph{parallel\_for()} для распараллеливания цикла,
+		\item одномерное итерационное пространство \emph{blocked\_range},
+        \item класс-функтор, разрабываемый нами и выполняющий основную часть умножения внутри метода 
+\emph{operator()}.
+	\end{enumerate}
+
+     \indentПостроение метода аналогичнор реализации для OMP.
+
+    \indentВ файле main.cpp  тесты проверяют корректность работы методов для матриц CRS-формата, в том числе параллельную реализацию умножения матриц. Тесты сравнивают возвращаемые методами значения с уже полученными решениями математических примеров, с решениями для аналогичных матриц стандартного формата, а также проверяется возникновение или отсутствие ошибки при запуске методов.
+
+	\newpage
+	\section{Результаты экспериментов}
+     \indent Работа различных реализаций для метода умножения была проверена при помощи следующих тестов:
+    \begin{enumerate}[topsep=0pt, labelwidth=!, labelindent=0pt]
+		\item \emph{expected\_mult\_CRSMatrix} - сравнение умножения 2 матриц с уже известным результатом.
+		\item \emph{random\_mult\_CRSMatrix 
+		}- сравнение произведения 2 случайных CRS-матриц малого размера с результатом для матриц обычного вида
+        \item \emph{mult\_CRSMatrix\_bad\_size} - проверка возникновение ошибки при некорректных размерах матриц.
+		\item \emph{can\_transp\_CRSMatrix} - сравнение результата транспонирования матрицы с ожидаемым результатом.
+	\end{enumerate}
+    
+\indent  Для оценки эффективности различных реализаций было проведено дополнительное тестирование для всех трёх библиотек на больших матрицах. Для этого были созданы тесты:
+	\begin{enumerate}[topsep=0pt, labelwidth=!, labelindent=0pt]
+		\item \emph{random\_mult\_150\_CRSMatrix}.
+		\item \emph{random\_mult\_350\_CRSMatrix}. 
+		\item \emph{random\_mult\_750\_CRSMatrix}.
+		\item \emph{random\_mult\_1000\_CRSMatrix}.
+	\end{enumerate}
+	
+ В тестах использовались случайно генерируемые квадратные CRS-матрицы заданных размеров с плотностью равной 0.4. Время выполнения тестов было измерено с помощью: 
+  \begin{enumerate}
+                \item \emph {std::chrono::high\_resolution\_clock::now()} для последовательной версии
+               \item \emph{omp\_get\_wtime()} для OpenMP-версии
+                \item \emph{tbb::tick\_count::now()} для TBB-версии
+    \end{enumerate}
+    \indent          
+     \indent  Время работы функций из различных библиотек отображено в таблице:
+	
+	\begin{table}[ht]
+		\centering
+		\begin{tabular}{| c | c | c | c |}
+			\hline
+			Размер матрицы & Последовательная & OpenMP & TBB \\
+			\hline
+			150*150 & 0.044 & 0.0148927 & 0.0160583  \\
+			\hline
+			350*350 & 0.56 &  0.176789 & 0.187352 \\
+            \hline
+			750*750 & 5.9 &  1.72247 & 1.75754 \\
+            \hline
+			1000*1000 & 12.89 &  4.29692 & 4.16402 \\
+			\hline
+		\end{tabular}
+	\end{table}
+	
+ \newpage
+ 
+	\section{Выводы из результатов}
+    
+    \indent Реализация с помощью TBB и OpenMP показывают сходные результы для различных размеров разреженных матриц. С увеличием размера матриц разница между временем выполнения последовательной и параллельных версий существенно увеличивается. Из этого можно сделать вывод, что использование параллелизма полностью оправдано для решения этой задачи.
+    
+	\newpage
+	
+	\section{Заключение}
+	В результате выполнения работы были успешно реализованы  последовательная и две параллельные версии умножения разреженных матриц. Была подтверждена оправданность использования параллелизма к этой задаче. Произошло знакомство параллелизмом на уровне потоков и интерфейсами библиотек OpenMP и TBB для C$++$, были закреплены навыки работы с матрицами.
+	\newpage
+	
+	\section{Литература}
+	\begin{enumerate}
+        \item Тьюарсон Р. Разреженные матрицы. – М.: Мир, 1977.
+		\item www.geeksforgeeks: сайт – URL: https://www.geeksforgeeks.org/measure-execution-time-function-cpp/ (дата обращения: 27.05.2023). —  Текст: электронный.
+        \item studwork.ru: сайт – URL: https://studwork.ru/spravochnik/matematika/matricy/umnojenie-matric (дата обращения: 27.05.2023). —  Текст: электронный.
+        \item www.itlab.unn.ru: сайт – URL:http://www.itlab.unn.ru/?dir=577 (дата обращения: 27.05.2023). —  Текст: электронный.
+	\end{enumerate}
+	\newpage
+	
+	\section{Приложение}
+	
+	\subsection{OpenMP: main.cpp}
+	\begin{lstlisting}
+// Copyright 2023 Pashina Alina
+#include <gtest/gtest.h>
+#include <omp.h>
+
+#include <vector>
+
+#include "./CRSMatrix_omp.h"
+
+TEST(MatrixCRS_support, make_and_fill_zero_matrix) {
+  EXPECT_NO_THROW(fillZero(5, 5));
+}
+TEST(MatrixCRS_support, random_vector_matrix) {
+  EXPECT_NO_THROW(createRandomMatrix(5, 5, 0.5));
+}
+TEST(MatrixCRS_support, vector_matrix_big_density) {
+  EXPECT_ANY_THROW(createRandomMatrix(5, 5, 2));
+}
+TEST(MatrixCRS_support, vector_matrix_oppos_density) {
+  EXPECT_ANY_THROW(createRandomMatrix(5, 5, -2));
+}
+TEST(MatrixCRS, matrix_mult_vec) {
+  std::vector<std::vector<double>> ve1 = {{0, 8}, {0, 2}};
+  std::vector<std::vector<double>> ve2 = {{1, 0}, {1, 0}};
+  std::vector<std::vector<double>> ve3 = {{8, 0}, {2, 0}};
+  EXPECT_EQ(multiplyVecMatrix(ve1, ve2), ve3);
+}
+
+TEST(CRSMatrix, create_crs_matrix) {
+  std::vector<std::vector<double>> veMatrix = {
+      {0, 5},
+      {9, 0},
+      {0, 6},
+  };
+  EXPECT_NO_THROW(CRSMatrix resCRS(veMatrix));
+}
+
+TEST(CRSMatrix, can_transp_CRSMatrix) {
+  std::vector<double> row1 = {0, 0, 0, 8};
+  std::vector<double> row2 = {6, 0, 0, 0};
+  std::vector<double> row3 = {0, 15, 0, 0};
+  std::vector<double> row4 = {6, 0, 0, 0};
+  std::vector<double> row5 = {0, 1, 0, 72};
+  std::vector<std::vector<double>> vT = {row1, row2, row3, row4, row5};
+
+  std::vector<double> res1 = {0, 6, 0, 6, 0};
+  std::vector<double> res2 = {0, 0, 15, 0, 1};
+  std::vector<double> res3 = {0, 0, 0, 0, 0};
+  std::vector<double> res4 = {8, 0, 0, 0, 72};
+  std::vector<std::vector<double>> resMatrix = {res1, res2, res3, res4};
+  EXPECT_EQ(CRSMatrix(vT).MatrixTransp(), CRSMatrix(resMatrix));
+}
+TEST(CRSMatrix, random_mult_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(3, 3, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(3, 3, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultOMP(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, random_mult_150_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(150, 150, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(150, 150, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultOMP(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, random_mult_350_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(350, 350, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(350, 350, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultOMP(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, random_mult_750_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(750, 750, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(750, 750, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultOMP(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, random_mult_1000_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(1000, 1000, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(1000, 1000, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultOMP(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, expected_mult_CRSMatrix) {
+  CRSMatrix firstM(6, 6, {1, 2, 3, 4, 2, 5, 7}, {0, 4, 2, 3, 3, 5, 1},
+                   {0, 2, 4, 4, 6, 6, 7});
+  CRSMatrix secondM(6, 6, {3, 1, 1, 3, 1, 3, 2, 4}, {0, 5, 2, 3, 0, 2, 1, 4},
+                    {0, 2, 3, 3, 4, 6, 8});
+  CRSMatrix resM(6, 6, {5, 6, 1, 12, 10, 6, 20, 7}, {0, 2, 5, 3, 1, 3, 4, 2},
+                 {0, 3, 4, 4, 7, 7, 8});
+  CRSMatrix res = firstM.MatrixMultOMP(secondM.MatrixTransp());
+  EXPECT_EQ(res, resM);
+}
+TEST(CRSMatrix, mult_CRSMatrix_bad_size) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(3, 2, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(5, 4, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_ANY_THROW(myCRSMatr1.MatrixMultOMP(myCRSMatr2.MatrixTransp()));
+}
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+
+
+	\end{lstlisting}
+	\newpage
+	\subsection{OpenMP: CRSMatrix\_omp.h
+}
+	\begin{lstlisting}
+// Copyright 2023 Pashina Alina
+#ifndef MODULES_TASK_2_PASHINA_A_SPARSE_MATRIX_OMP_CRSMATRIX_OMP_H_
+#define MODULES_TASK_2_PASHINA_A_SPARSE_MATRIX_OMP_CRSMATRIX_OMP_H_
+
+#include <string>
+#include <vector>
+
+class CRSMatrix {
+ public:
+  int numRow, numCol;
+  std::vector<double> valueCRS;
+  std::vector<int> colsCRS;
+  std::vector<int> pointerCRS;
+
+  CRSMatrix(int numC, int numR, const std::vector<double>& myVal,
+            const std::vector<int>& myColu, const std::vector<int>& myPointer);
+  explicit CRSMatrix(int numC = 0, int numR = 0);
+  explicit CRSMatrix(std::vector<std::vector<double>> matr);
+  bool operator==(const CRSMatrix& matr) const;
+  CRSMatrix MatrixTransp();
+  CRSMatrix MatrixMultOMP(CRSMatrix matr);
+};
+
+std::vector<std::vector<double>> fillZero(int cols, int rows);
+std::vector<std::vector<double>> createRandomMatrix(int cols, int rows,
+                                                    double perc);
+std::vector<std::vector<double>> multiplyVecMatrix(
+    std::vector<std::vector<double>> myFirstMatrix,
+    std::vector<std::vector<double>> mySecondMatrix);
+
+#endif  // MODULES_TASK_2_PASHINA_A_SPARSE_MATRIX_OMP_CRSMATRIX_OMP_H_
+
+	\end{lstlisting}
+	\newpage
+	\subsection{OpenMP: CRSMatrix\_omp.cpp}
+	\begin{lstlisting}
+// Copyright 2023 Pashina Alina
+#include "../../../modules/task_2/pashina_a_sparse_matrix_omp/CRSMatrix_omp.h"
+
+#include <omp.h>
+#include <time.h>
+
+#include <iostream>
+#include <random>
+#include <string>
+#include <vector>
+
+CRSMatrix::CRSMatrix(int numC, int numR, const std::vector<double>& myVal,
+                     const std::vector<int>& myColu,
+                     const std::vector<int>& myPointer)
+    : valueCRS(myVal),
+      numCol(numC),
+      colsCRS(myColu),
+      numRow(numR),
+      pointerCRS(myPointer) {}
+
+CRSMatrix::CRSMatrix(int numC, int numR) {
+  numCol = numC;
+  numRow = numR;
+}
+
+CRSMatrix::CRSMatrix(std::vector<std::vector<double>> matr) {
+  int indexCounter = 0;
+  numRow = matr.size();
+  numCol = matr[0].size();
+  pointerCRS.push_back(indexCounter);
+  for (int r = 0; r < numRow; r++) {
+    for (int c = 0; c < numCol; c++) {
+      if (matr[r][c] != 0) {
+        valueCRS.push_back(matr[r][c]);
+        indexCounter++;
+        colsCRS.push_back(c);
+      }
+    }
+    pointerCRS.push_back(indexCounter);
+  }
+}
+
+bool CRSMatrix::operator==(const CRSMatrix& matr) const {
+  if ((valueCRS == matr.valueCRS) && (numCol == matr.numCol) &&
+      (colsCRS == matr.colsCRS) && (numRow == matr.numRow) &&
+      (pointerCRS == matr.pointerCRS)) {
+    return true;
+  }
+  return false;
+}
+
+CRSMatrix CRSMatrix::MatrixTransp() {
+  CRSMatrix matr;
+  std::vector<std::vector<int>> locCVec(numCol);
+  std::vector<std::vector<double>> locVecVal(numCol);
+  matr.numCol = numRow;
+  int elemCounter = 0;
+  matr.numRow = numCol;
+
+  for (int r = 0; r < numRow; r++) {
+    for (int ind = pointerCRS[r]; ind < pointerCRS[r + 1]; ind++) {
+      int colInd = colsCRS[ind];
+      locCVec[colInd].push_back(r);
+      locVecVal[colInd].push_back(valueCRS[ind]);
+    }
+  }
+  matr.pointerCRS.push_back(elemCounter);
+  for (int col = 0; col < numCol; col++) {
+    for (size_t ktmp = 0; ktmp < locCVec[col].size(); ktmp++) {
+      matr.colsCRS.push_back(locCVec[col][ktmp]);
+      matr.valueCRS.push_back(locVecVal[col][ktmp]);
+    }
+    elemCounter += locCVec[col].size();
+    matr.pointerCRS.push_back(elemCounter);
+  }
+  return matr;
+}
+
+CRSMatrix CRSMatrix::MatrixMultOMP(CRSMatrix matr) {
+  double begin = omp_get_wtime();
+  if (numCol != matr.numCol) {
+    throw std::runtime_error("Wrong matrix sizes!Change rows \n");
+  }
+  std::vector<int> finCol, finPoint;
+  std::vector<double> finVal;
+  int resRows = numRow;
+  std::vector<std::vector<int>> locCol(numRow);
+  std::vector<std::vector<double>> locVal(numRow);
+  int resCols = matr.numCol;
+#pragma omp parallel for
+  for (int ro1 = 0; ro1 < numRow; ro1++) {
+    for (int ro2 = 0; ro2 < matr.numRow; ro2++) {
+      int first_CurPoint = pointerCRS[ro1];
+      int second_CurPoint = matr.pointerCRS[ro2];
+      int first_EndPoint = pointerCRS[ro1 + 1] - 1;
+      int second_EndPoint = matr.pointerCRS[ro2 + 1] - 1;
+      double elSum = 0;
+      while ((second_CurPoint <= second_EndPoint) &&
+             (first_CurPoint <= first_EndPoint)) {
+        if (colsCRS[first_CurPoint] <= matr.colsCRS[second_CurPoint]) {
+          if (colsCRS[first_CurPoint] == matr.colsCRS[second_CurPoint]) {
+            elSum = elSum +
+                    valueCRS[first_CurPoint] * matr.valueCRS[second_CurPoint];
+            second_CurPoint++;
+            first_CurPoint++;
+          } else {
+            first_CurPoint++;
+          }
+        } else {
+          second_CurPoint++;
+        }
+      }
+      if (elSum != 0) {
+        locVal[ro1].push_back(elSum);
+        locCol[ro1].push_back(ro2);
+      }
+    }
+  }
+  int elemCounter = 0;
+  finPoint.push_back(elemCounter);
+  for (int indRow = 0; indRow < numRow; indRow++) {
+    elemCounter = elemCounter + locCol[indRow].size();
+    finCol.insert(finCol.end(), locCol[indRow].begin(), locCol[indRow].end());
+    finVal.insert(finVal.end(), locVal[indRow].begin(), locVal[indRow].end());
+    finPoint.push_back(elemCounter);
+  }
+  CRSMatrix resultMatr(resCols, resRows, finVal, finCol, finPoint);
+  double end = omp_get_wtime();  
+  //std::cout << "OMP TIME=" << (end - begin) << std::endl;
+  return resultMatr;
+}
+
+std::vector<std::vector<double>> fillZero(int cols, int rows) {
+  std::vector<std::vector<double>> res(rows);
+  for (int m = 0; m < rows; m++) {
+    for (int n = 0; n < cols; n++) {
+      res[m].push_back(0);
+    }
+  }
+  return res;
+}
+std::vector<std::vector<double>> createRandomMatrix(int cols, int rows,
+                                                    double perc) {
+  if (perc < 0 || perc > 1) {
+    throw std::runtime_error("Wrong density \n");
+  }
+  std::random_device mydev;
+  std::vector<std::vector<double>> res = fillZero(cols, rows);
+  std::mt19937 gen(mydev());
+  std::uniform_real_distribution<double> genP{0.0, 1.0};
+  std::uniform_real_distribution<double> genVal{0.0, 25.0};
+  for (int ro = 0; ro < rows; ro++) {
+    for (int col = 0; col < cols; col++) {
+      if (genP(gen) <= perc) {
+        res[ro][col] = genVal(gen);
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<double>> multiplyVecMatrix(
+    std::vector<std::vector<double>> myFirstMatrix,
+    std::vector<std::vector<double>> mySecondMatrix) {
+  int colsNum = mySecondMatrix[0].size();
+  int rowsNumb = myFirstMatrix.size();
+  std::vector<std::vector<double>> myResCRS = fillZero(colsNum, rowsNumb);
+  for (int rr = 0; rr < rowsNumb; rr++) {
+    for (int cc = 0; cc < colsNum; cc++) {
+      myResCRS[rr][cc] = 0;
+      for (size_t k = 0; k < myFirstMatrix[0].size(); k++) {
+        myResCRS[rr][cc] += myFirstMatrix[rr][k] * mySecondMatrix[k][cc];
+      }
+    }
+  }
+  return myResCRS;
+}
+
+	\end{lstlisting}
+	\newpage
+	
+	\subsection{TBB: main.cpp}
+	\begin{lstlisting}
+// Copyright 2023 Pashina Alina
+#include <gtest/gtest.h>
+
+#include <vector>
+
+#include "./CRSMatrix_tbb.h"
+
+TEST(MatrixCRS_support, make_and_fill_zero_matrix) {
+  EXPECT_NO_THROW(fillZero(5, 5));
+}
+TEST(MatrixCRS_support, random_vector_matrix) {
+  EXPECT_NO_THROW(createRandomMatrix(5, 5, 0.5));
+}
+TEST(MatrixCRS_support, vector_matrix_big_density) {
+  EXPECT_ANY_THROW(createRandomMatrix(5, 5, 2));
+}
+TEST(MatrixCRS_support, vector_matrix_oppos_density) {
+  EXPECT_ANY_THROW(createRandomMatrix(5, 5, -2));
+}
+TEST(CRSMatrix, matrix_mult_vec) {
+  std::vector<std::vector<double>> ve1 = {{0, 8}, {0, 2}};
+  std::vector<std::vector<double>> ve2 = {{1, 0}, {1, 0}};
+  std::vector<std::vector<double>> ve3 = {{8, 0}, {2, 0}};
+  EXPECT_EQ(multiplyVecMatrix(ve1, ve2), ve3);
+}
+TEST(CRSMatrix, create_crs_matrix) {
+  std::vector<std::vector<double>> veMatrix = {
+      {0, 5},
+      {9, 0},
+      {0, 6},
+  };
+  EXPECT_NO_THROW(CRSMatrix resCRS(veMatrix));
+}
+TEST(CRSMatrix, can_transp_CRSMatrix) {
+  std::vector<double> row1 = {0, 0, 0, 8};
+  std::vector<double> row2 = {6, 0, 0, 0};
+  std::vector<double> row3 = {0, 15, 0, 0};
+  std::vector<double> row4 = {6, 0, 0, 0};
+  std::vector<double> row5 = {0, 1, 0, 72};
+  std::vector<std::vector<double>> vT = {row1, row2, row3, row4, row5};
+
+  std::vector<double> res1 = {0, 6, 0, 6, 0};
+  std::vector<double> res2 = {0, 0, 15, 0, 1};
+  std::vector<double> res3 = {0, 0, 0, 0, 0};
+  std::vector<double> res4 = {8, 0, 0, 0, 72};
+  std::vector<std::vector<double>> resMatrix = {res1, res2, res3, res4};
+  EXPECT_EQ(CRSMatrix(vT).MatrixTransp(), CRSMatrix(resMatrix));
+}
+TEST(CRSMatrix, TBB_random_mult_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(3, 3, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(3, 3, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultTBB(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, TBB_random_mult_150_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(150, 150, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(150, 150, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultTBB(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, TBB_random_mult_350_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(350, 350, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(350, 350, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultTBB(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, TBB_random_mult_750_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(750, 750, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(750, 750, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultTBB(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, TBB_random_mult_1000_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(1000, 1000, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(1000, 1000, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMultTBB(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, TBB_expected_mult_CRSMatrix) {
+  CRSMatrix firstM(6, 6, {1, 2, 3, 4, 2, 5, 7}, {0, 4, 2, 3, 3, 5, 1},
+                   {0, 2, 4, 4, 6, 6, 7});
+  CRSMatrix secondM(6, 6, {3, 1, 1, 3, 1, 3, 2, 4}, {0, 5, 2, 3, 0, 2, 1, 4},
+                    {0, 2, 3, 3, 4, 6, 8});
+  CRSMatrix resM(6, 6, {5, 6, 1, 12, 10, 6, 20, 7}, {0, 2, 5, 3, 1, 3, 4, 2},
+                 {0, 3, 4, 4, 7, 7, 8});
+  CRSMatrix res = firstM.MatrixMultTBB(secondM.MatrixTransp());
+  EXPECT_EQ(res, resM);
+}
+TEST(CRSMatrix, TBB_mult_CRSMatrix_bad_size) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(3, 2, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(5, 4, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_ANY_THROW(myCRSMatr1.MatrixMultTBB(myCRSMatr2.MatrixTransp()));
+}
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+	\end{lstlisting}
+	\newpage
+	
+	\subsection{TBB: CRSMatrix\_tbb.h}
+	\begin{lstlisting}
+// Copyright 2023 Pashina Alina
+#ifndef MODULES_TASK_3_PASHINA_A_SPARSE_MATRIX_TBB_CRSMATRIX_TBB_H_
+#define MODULES_TASK_3_PASHINA_A_SPARSE_MATRIX_TBB_CRSMATRIX_TBB_H_
+
+#include <string>
+#include <vector>
+
+class CRSMatrix {
+ public:
+  int numRow, numCol;
+  std::vector<double> valueCRS;
+  std::vector<int> colsCRS;
+  std::vector<int> pointerCRS;
+
+  CRSMatrix(int numC, int numR, const std::vector<double>& myVal,
+            const std::vector<int>& myColu, const std::vector<int>& myPointer);
+  explicit CRSMatrix(int numC = 0, int numR = 0);
+  explicit CRSMatrix(std::vector<std::vector<double>> matr);
+  bool operator==(const CRSMatrix& matr) const;
+  CRSMatrix MatrixTransp();
+  CRSMatrix MatrixMultTBB(CRSMatrix matr);
+};
+
+std::vector<std::vector<double>> fillZero(int cols, int rows);
+std::vector<std::vector<double>> createRandomMatrix(int cols, int rows,
+                                                    double perc);
+std::vector<std::vector<double>> multiplyVecMatrix(
+    std::vector<std::vector<double>> myFirstMatrix,
+    std::vector<std::vector<double>> mySecondMatrix);
+
+#endif  // MODULES_TASK_3_PASHINA_A_SPARSE_MATRIX_TBB_CRSMATRIX_TBB_H_
+
+
+	\end{lstlisting}
+	\newpage
+	
+	\subsection{TBB: CRSMatrix\_tbb.cpp}
+	\begin{lstlisting}
+// Copyright 2023 Pashina Alina
+#include "../../../modules/task_3/pashina_a_sparse_matrix_tbb/CRSMatrix_tbb.h"
+
+#include <tbb/tbb.h>
+#include <time.h>
+
+#include <functional>
+#include <iostream>
+#include <numeric>
+#include <random>
+#include <string>
+#include <vector>
+
+CRSMatrix::CRSMatrix(int numC, int numR, const std::vector<double>& myVal,
+                     const std::vector<int>& myColu,
+                     const std::vector<int>& myPointer)
+    : valueCRS(myVal),
+      numCol(numC),
+      colsCRS(myColu),
+      numRow(numR),
+      pointerCRS(myPointer) {}
+
+CRSMatrix::CRSMatrix(int numC, int numR) {
+  numCol = numC;
+  numRow = numR;
+}
+
+CRSMatrix::CRSMatrix(std::vector<std::vector<double>> matr) {
+  int indexCounter = 0;
+  numRow = matr.size();
+  numCol = matr[0].size();
+  pointerCRS.push_back(indexCounter);
+  for (int r = 0; r < numRow; r++) {
+    for (int c = 0; c < numCol; c++) {
+      if (matr[r][c] != 0) {
+        valueCRS.push_back(matr[r][c]);
+        indexCounter++;
+        colsCRS.push_back(c);
+      }
+    }
+    pointerCRS.push_back(indexCounter);
+  }
+}
+
+bool CRSMatrix::operator==(const CRSMatrix& matr) const {
+  if ((valueCRS == matr.valueCRS) && (numCol == matr.numCol) &&
+      (colsCRS == matr.colsCRS) && (numRow == matr.numRow) &&
+      (pointerCRS == matr.pointerCRS)) {
+    return true;
+  }
+  return false;
+}
+
+CRSMatrix CRSMatrix::MatrixTransp() {
+  CRSMatrix matr;
+  std::vector<std::vector<int>> locCVec(numCol);
+  std::vector<std::vector<double>> locVecVal(numCol);
+  matr.numCol = numRow;
+  int elemCounter = 0;
+  matr.numRow = numCol;
+
+  for (int r = 0; r < numRow; r++) {
+    for (int ind = pointerCRS[r]; ind < pointerCRS[r + 1]; ind++) {
+      int colInd = colsCRS[ind];
+      locCVec[colInd].push_back(r);
+      locVecVal[colInd].push_back(valueCRS[ind]);
+    }
+  }
+  matr.pointerCRS.push_back(elemCounter);
+  for (int col = 0; col < numCol; col++) {
+    for (size_t ktmp = 0; ktmp < locCVec[col].size(); ktmp++) {
+      matr.colsCRS.push_back(locCVec[col][ktmp]);
+      matr.valueCRS.push_back(locVecVal[col][ktmp]);
+    }
+    elemCounter += locCVec[col].size();
+    matr.pointerCRS.push_back(elemCounter);
+  }
+  return matr;
+}
+
+CRSMatrix CRSMatrix::MatrixMultTBB(CRSMatrix matr) {
+  tbb::tick_count begin = tbb::tick_count::now();
+  if (numCol != matr.numCol) {
+    throw std::runtime_error("Wrong matrix sizes!Change rows \n");
+  }
+  std::vector<int> finCol, finPoint;
+  std::vector<double> finVal;
+  int resRows = numRow;
+  std::vector<std::vector<int>> locCol(numRow);
+  std::vector<std::vector<double>> locVal(numRow);
+  int resCols = matr.numCol;
+
+  int size_part = 10;
+  tbb::parallel_for(
+      tbb::blocked_range<int>(0, numRow, size_part),
+      [&](tbb::blocked_range<int> r) {
+        for (int ro1 = r.begin(); ro1 != r.end(); ++ro1) {
+          for (int ro2 = 0; ro2 < matr.numRow; ro2++) {
+            int first_CurPoint = pointerCRS[ro1];
+            int second_CurPoint = matr.pointerCRS[ro2];
+            int first_EndPoint = pointerCRS[ro1 + 1] - 1;
+            int second_EndPoint = matr.pointerCRS[ro2 + 1] - 1;
+            double elSum = 0;
+            while ((second_CurPoint <= second_EndPoint) &&
+                   (first_CurPoint <= first_EndPoint)) {
+              if (colsCRS[first_CurPoint] <= matr.colsCRS[second_CurPoint]) {
+                if (colsCRS[first_CurPoint] == matr.colsCRS[second_CurPoint]) {
+                  elSum = elSum + valueCRS[first_CurPoint] *
+                                      matr.valueCRS[second_CurPoint];
+                  second_CurPoint++;
+                  first_CurPoint++;
+                } else {
+                  first_CurPoint++;
+                }
+              } else {
+                second_CurPoint++;
+              }
+            }
+            if (elSum != 0) {
+              locVal[ro1].push_back(elSum);
+              locCol[ro1].push_back(ro2);
+            }
+          }
+        }
+      });
+  int elemCounter = 0;
+  finPoint.push_back(elemCounter);
+  for (int indRow = 0; indRow < numRow; indRow++) {
+    elemCounter = elemCounter + locCol[indRow].size();
+    finCol.insert(finCol.end(), locCol[indRow].begin(), locCol[indRow].end());
+    finVal.insert(finVal.end(), locVal[indRow].begin(), locVal[indRow].end());
+    finPoint.push_back(elemCounter);
+  }
+  CRSMatrix resultMatr(resCols, resRows, finVal, finCol, finPoint);
+  tbb::tick_count end = tbb::tick_count::now();
+  // std::cout << "TBB TIME " << (end - begin).seconds() << std::endl;
+  return resultMatr;
+}
+
+std::vector<std::vector<double>> fillZero(int cols, int rows) {
+  std::vector<std::vector<double>> res(rows);
+  for (int m = 0; m < rows; m++) {
+    for (int n = 0; n < cols; n++) {
+      res[m].push_back(0);
+    }
+  }
+  return res;
+}
+std::vector<std::vector<double>> createRandomMatrix(int cols, int rows,
+                                                    double perc) {
+  if (perc < 0 || perc > 1) {
+    throw std::runtime_error("Wrong density \n");
+  }
+  std::random_device mydev;
+  std::vector<std::vector<double>> res = fillZero(cols, rows);
+  std::mt19937 gen(mydev());
+  std::uniform_real_distribution<double> genP{0.0, 1.0};
+  std::uniform_real_distribution<double> genVal{0.0, 25.0};
+  for (int ro = 0; ro < rows; ro++) {
+    for (int col = 0; col < cols; col++) {
+      if (genP(gen) <= perc) {
+        res[ro][col] = genVal(gen);
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<double>> multiplyVecMatrix(
+    std::vector<std::vector<double>> myFirstMatrix,
+    std::vector<std::vector<double>> mySecondMatrix) {
+  int colsNum = mySecondMatrix[0].size();
+  int rowsNumb = myFirstMatrix.size();
+  std::vector<std::vector<double>> myResCRS = fillZero(colsNum, rowsNumb);
+  for (int rr = 0; rr < rowsNumb; rr++) {
+    for (int cc = 0; cc < colsNum; cc++) {
+      myResCRS[rr][cc] = 0;
+      for (size_t k = 0; k < myFirstMatrix[0].size(); k++) {
+        myResCRS[rr][cc] += myFirstMatrix[rr][k] * mySecondMatrix[k][cc];
+      }
+    }
+  }
+  return myResCRS;
+}
+
+	\end{lstlisting}
+	\newpage
+
+	\subsection{Sequential: main.cpp}
+	\begin{lstlisting}
+    // Copyright 2023 Pashina Alina
+#include <gtest/gtest.h>
+
+#include <chrono>
+#include <iostream>
+#include <random>
+#include <string>
+#include <vector>
+
+class CRSMatrix {
+ public:
+  int numRow, numCol;
+  std::vector<double> valueCRS;
+  std::vector<int> colsCRS;
+  std::vector<int> pointerCRS;
+
+  CRSMatrix(int numC, int numR, const std::vector<double>& myVal,
+            const std::vector<int>& myColu, const std::vector<int>& myPointer)
+      : valueCRS(myVal),
+        numCol(numC),
+        colsCRS(myColu),
+        numRow(numR),
+        pointerCRS(myPointer) {}
+  explicit CRSMatrix(int numC = 0, int numR = 0) {
+    numCol = numC;
+    numRow = numR;
+  }
+  explicit CRSMatrix(std::vector<std::vector<double>> matr) {
+    int indexCounter = 0;
+    numRow = matr.size();
+    numCol = matr[0].size();
+    pointerCRS.push_back(indexCounter);
+    for (int r = 0; r < numRow; r++) {
+      for (int c = 0; c < numCol; c++) {
+        if (matr[r][c] != 0) {
+          valueCRS.push_back(matr[r][c]);
+          indexCounter++;
+          colsCRS.push_back(c);
+        }
+      }
+      pointerCRS.push_back(indexCounter);
+    }
+  }
+  bool operator==(const CRSMatrix& matr) const {
+    if ((valueCRS == matr.valueCRS) && (numCol == matr.numCol) &&
+        (colsCRS == matr.colsCRS) && (numRow == matr.numRow) &&
+        (pointerCRS == matr.pointerCRS)) {
+      return true;
+    }
+    return false;
+  }
+  CRSMatrix MatrixTransp() {
+    CRSMatrix matr;
+    std::vector<std::vector<int>> locCVec(numCol);
+    std::vector<std::vector<double>> locVecVal(numCol);
+    matr.numCol = numRow;
+    int elemCounter = 0;
+    matr.numRow = numCol;
+
+    for (int r = 0; r < numRow; r++) {
+      for (int ind = pointerCRS[r]; ind < pointerCRS[r + 1]; ind++) {
+        int colInd = colsCRS[ind];
+        locCVec[colInd].push_back(r);
+        locVecVal[colInd].push_back(valueCRS[ind]);
+      }
+    }
+    matr.pointerCRS.push_back(elemCounter);
+    for (int col = 0; col < numCol; col++) {
+      for (size_t ktmp = 0; ktmp < locCVec[col].size(); ktmp++) {
+        matr.colsCRS.push_back(locCVec[col][ktmp]);
+        matr.valueCRS.push_back(locVecVal[col][ktmp]);
+      }
+      elemCounter += locCVec[col].size();
+      matr.pointerCRS.push_back(elemCounter);
+    }
+    return matr;
+  }
+  CRSMatrix MatrixMult(CRSMatrix matr) {
+    auto start = std::chrono::high_resolution_clock::now();
+    if (matr.numCol != numCol) {
+      throw std::runtime_error("Wrong matrix sizes!Change rows \n");
+    }
+    std::vector<int> finColumn, finPointer;
+    std::vector<double> finValue;
+    int nRowZero = 0;
+    finPointer.push_back(nRowZero);
+    int finNumRows = numRow;
+    int finNumCols = matr.numCol;
+    for (int r1 = 0; r1 < numRow; r1++) {
+      nRowZero = 0;
+      for (int r2 = 0; r2 < matr.numRow; r2++) {
+        int firstStart = pointerCRS[r1];
+        int secondStart = matr.pointerCRS[r2];
+        double localSum = 0;
+        while (((matr.pointerCRS[r2 + 1] - 1) >= secondStart) &&
+               ((pointerCRS[r1 + 1] - 1) >= firstStart)) {
+          if (colsCRS[firstStart] == matr.colsCRS[secondStart]) {
+            localSum += (valueCRS[firstStart] * matr.valueCRS[secondStart]);
+            firstStart = firstStart + 1;
+            secondStart = secondStart + 1;
+          } else {
+            if (colsCRS[firstStart] < matr.colsCRS[secondStart]) {
+              firstStart = firstStart + 1;
+            } else {
+              secondStart = secondStart + 1;
+            }
+          }
+        }
+        if (localSum != 0) {
+          nRowZero = nRowZero + 1;
+          finColumn.push_back(r2);
+          finValue.push_back(localSum);
+        }
+      }
+      finPointer.push_back(nRowZero + finPointer[r1]);
+    }
+
+    CRSMatrix res(finNumCols, finNumRows, finValue, finColumn, finPointer);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    //std::cout << "SEQ="
+    //          << std::chrono::duration_cast<std::chrono::microseconds>(end -
+    //                                                                   start)
+    //                 .count()
+    //          << std::endl;
+    return res;
+  }
+};
+
+std::vector<std::vector<double>> fillZero(int cols, int rows) {
+  std::vector<std::vector<double>> res(rows);
+  for (int m = 0; m < rows; m++) {
+    for (int n = 0; n < cols; n++) {
+      res[m].push_back(0);
+    }
+  }
+  return res;
+}
+std::vector<std::vector<double>> createRandomMatrix(int cols, int rows,
+                                                    double perc) {
+  if (perc < 0 || perc > 1) {
+    throw std::runtime_error("Wrong density \n");
+  }
+  std::random_device mydev;
+  std::vector<std::vector<double>> res = fillZero(cols, rows);
+  std::mt19937 gen(mydev());
+  std::uniform_real_distribution<double> genP{0.0, 1.0};
+  std::uniform_real_distribution<double> genVal{0.0, 25.0};
+  for (int ro = 0; ro < rows; ro++) {
+    for (int col = 0; col < cols; col++) {
+      if (genP(gen) <= perc) {
+        res[ro][col] = genVal(gen);
+      }
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<double>> multiplyVecMatrix(
+    std::vector<std::vector<double>> myFirstMatrix,
+    std::vector<std::vector<double>> mySecondMatrix) {
+  int colsNum = mySecondMatrix[0].size();
+  int rowsNumb = myFirstMatrix.size();
+  std::vector<std::vector<double>> myResCRS = fillZero(colsNum, rowsNumb);
+  for (int rr = 0; rr < rowsNumb; rr++) {
+    for (int cc = 0; cc < colsNum; cc++) {
+      myResCRS[rr][cc] = 0;
+      for (size_t k = 0; k < myFirstMatrix[0].size(); k++) {
+        myResCRS[rr][cc] += myFirstMatrix[rr][k] * mySecondMatrix[k][cc];
+      }
+    }
+  }
+  return myResCRS;
+}
+
+TEST(MatrixCRS_support, make_and_fill_zero_matrix) {
+  EXPECT_NO_THROW(fillZero(5, 5));
+}
+TEST(MatrixCRS_support, random_vector_matrix) {
+  EXPECT_NO_THROW(createRandomMatrix(5, 5, 0.5));
+}
+TEST(MatrixCRS_support, vector_matrix_big_density) {
+  EXPECT_ANY_THROW(createRandomMatrix(5, 5, 2));
+}
+TEST(MatrixCRS_support, vector_matrix_oppos_density) {
+  EXPECT_ANY_THROW(createRandomMatrix(5, 5, -2));
+}
+TEST(MatrixCRS, matrix_mult_vec) {
+  std::vector<std::vector<double>> ve1 = {{0, 8}, {0, 2}};
+  std::vector<std::vector<double>> ve2 = {{1, 0}, {1, 0}};
+  std::vector<std::vector<double>> ve3 = {{8, 0}, {2, 0}};
+  EXPECT_EQ(multiplyVecMatrix(ve1, ve2), ve3);
+}
+
+TEST(CRSMatrix, create_crs_matrix) {
+  std::vector<std::vector<double>> veMatrix = {
+      {0, 5},
+      {9, 0},
+      {0, 6},
+  };
+  EXPECT_NO_THROW(CRSMatrix resCRS(veMatrix));
+}
+
+TEST(CRSMatrix, can_transp_CRSMatrix) {
+  std::vector<double> row1 = {0, 0, 0, 8};
+  std::vector<double> row2 = {6, 0, 0, 0};
+  std::vector<double> row3 = {0, 15, 0, 0};
+  std::vector<double> row4 = {6, 0, 0, 0};
+  std::vector<double> row5 = {0, 1, 0, 72};
+  std::vector<std::vector<double>> vT = {row1, row2, row3, row4, row5};
+
+  std::vector<double> res1 = {0, 6, 0, 6, 0};
+  std::vector<double> res2 = {0, 0, 15, 0, 1};
+  std::vector<double> res3 = {0, 0, 0, 0, 0};
+  std::vector<double> res4 = {8, 0, 0, 0, 72};
+  std::vector<std::vector<double>> resMatrix = {res1, res2, res3, res4};
+  EXPECT_EQ(CRSMatrix(vT).MatrixTransp(), CRSMatrix(resMatrix));
+}
+TEST(CRSMatrix, random_mult_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(3, 3, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(3, 3, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMult(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, random_mult_150_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(150, 150, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(150, 150, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMult(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, random_mult_350_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(350, 350, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(350, 350, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMult(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, random_mult_750_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(750, 750, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(750, 750, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMult(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+TEST(CRSMatrix, random_mult_1000_CRSMatrix) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(1000, 1000, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(1000, 1000, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_EQ(myCRSMatr1.MatrixMult(myCRSMatr2.MatrixTransp()),
+            CRSMatrix(multiplyVecMatrix(veM1, veM2)));
+}
+
+TEST(CRSMatrix, expected_mult_CRSMatrix) {
+  CRSMatrix firstM(6, 6, {1, 2, 3, 4, 2, 5, 7}, {0, 4, 2, 3, 3, 5, 1},
+                   {0, 2, 4, 4, 6, 6, 7});
+  CRSMatrix secondM(6, 6, {3, 1, 1, 3, 1, 3, 2, 4}, {0, 5, 2, 3, 0, 2, 1, 4},
+                    {0, 2, 3, 3, 4, 6, 8});
+  CRSMatrix resM(6, 6, {5, 6, 1, 12, 10, 6, 20, 7}, {0, 2, 5, 3, 1, 3, 4, 2},
+                 {0, 3, 4, 4, 7, 7, 8});
+  CRSMatrix res = firstM.MatrixMult(secondM.MatrixTransp());
+  EXPECT_EQ(res, resM);
+}
+TEST(CRSMatrix, mult_CRSMatrix_bad_size) {
+  std::vector<std::vector<double>> veM1 = createRandomMatrix(3, 2, 0.4);
+  std::vector<std::vector<double>> veM2 = createRandomMatrix(5, 4, 0.4);
+  CRSMatrix myCRSMatr1(veM1);
+  CRSMatrix myCRSMatr2(veM2);
+  EXPECT_ANY_THROW(myCRSMatr1.MatrixMult(myCRSMatr2.MatrixTransp()));
+}
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+
+    \end{lstlisting}
+\end{document}
