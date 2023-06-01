@@ -1,0 +1,716 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage{tocloft}
+\usepackage{indentfirst}
+\usepackage{enumitem}
+\usepackage[russian]{babel}
+\usepackage{graphicx}
+\usepackage{mathtools}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[a4paper,
+left=3cm,
+right=3cm,
+top=2cm,
+bottom=2cm]{geometry}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+\title{}
+\author{}
+\date{}
+\begin{document}
+
+\begin{titlepage}
+    \newpage
+    \begin{center}
+    {\bfseries МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ
+Федеральное государственное автономное образовательное учреждение
+высшего образования
+ \\
+    «Национальный исследовательский
+Нижегородский государственный университет им. Н.И. Лобачевского»
+(ННГУ)
+}
+
+    %\begin{center}
+     Институт информационных технологий, математики и механики \\
+    \end{center}
+
+    \vspace{1.2em}
+
+    \begin{center}
+    %\textsc{\textbf{}}
+    \Large Отчёт по дисциплине \linebreak «Параллельное программирование» \linebreak на тему: \linebreak
+«Поразрядная сортировка для вещественных чисел (тип double) с четно-нечетным слиянием Бэтчера.»
+
+    \end{center}
+
+    \vspace{5em}
+
+
+    \begin{flushright}
+                       Выполнил(а):
+                       студент(ка) группы 382006-2\linebreakКулёва А.А.\underline{\hspace{3cm}} \linebreak\linebreakПроверил: младший научный сотрудник\linebreakНестеров А.Ю.\underline{\hspace{3cm}} 
+    \end{flushright}
+
+    \vspace{\fill}
+    
+    \begin{center}
+    Нижний Новгород\\
+    2023
+    \end{center}
+
+    \end{titlepage}
+    
+\maketitle
+
+\part*{Введение}
+\paragraph{}Сортировка является одной из фундаментальных алгоритмических задач программирования. Решению проблем, связанных с сортировкой, посвящено множество научных исследований, разработано множество алгоритмов.
+\paragraph{}Поразрядная сортировка (Radix sort — сортировка по основанию системы счисления) — это алгоритм сортировки, который выполняется за линейное время. Данный алгоритм исходно предназначен для сортировки целых чисел, но так как в памяти компьютеров любая информация записывается целыми числами, алгоритм пригоден для сортировки любых объектов, запись которых можно поделить на «разряды», содержащие сравнимые значения, в том числе и вещественных чисел (тип double).
+\paragraph{}Чётно-нечётное слияние Бэтчера заключается в том, что два упорядоченных массива, которые необходимо слить, разделяются на чётные и нечётные элементы. Такое слияние может быть выполнено параллельно, что позволит распределить вычисления между несколькими потоками и повысит эффективность работы программы. Чётно-нечётное слияние Бэтчера позволяет задействовать 2 потока при слиянии двух упорядоченных массивов. В этом случае слияние n массивов могут выполнять n параллельных потоков. На следующем шаге слияние n/2 полученных массивов будут выполнять n/2 потоков и т.д. На последнем шаге два массива будут сливать 2 потока.
+\paragraph{}Цель данной лабораторной работы - реализовать алгоритм поразрядной сортировки для вещественных чисел (тип double) с четно-нечетным слиянием Бэтчера с использованием следующих технологий параллельного программирования: MPI, OpenMP, TBB и std::thread. В ходе выполнения лабораторной работы требуется также изучить и сравненить эффективность различных параллельных реализаций данного алгоритма.
+
+\newpage
+\part*{Постановка задачи}
+\paragraph{} Задача данной лабораторной работы заключается в том, чтобы, применяя навыки и знания в параллельном программировании, реализовать различные версии алгоритма поразрядной сортировки для вещественных чисел (тип double) с четно-нечетным слиянием Бэтчера. Работа будет проходить по следующему плану:
+\begin{enumerate}
+\item Реализовать программу на языке C++, осуществляющую  поразрядную сортировку для вещественных чисел (тип double) с четно-нечетным слиянием Бэтчера. Должны быть представлены следующие реализации алгоритма:
+\begin{itemize} \item последовательная реализация;  \item параллельная реализация с применением технологии OpenMP;  \item параллельная реализация с применением библиотеки TBB; \item параллельная реализация с применением std::thread. \end{itemize}
+\item Для проверки корректности работы программы требуется написать набор тестов, используя фрэймворк для разработки автоматических тестов [Google Test][gtest].
+\item  В результате работы для каждой версии должны быть представлены 4 файла:\\
+1) main.cpp - гугл тесты для задачи. Количество тестов должно быть 5 или больше;\\
+2) radix\_double\_batcher.h - заголовочный файл с прототипами функций; \\
+3) radix\_double\_batcher.cpp (radix\_double\_batcher\_omp.cpp,
+\\radix\_double\_batcher\_tbb.cpp, radix\_double\_batcher\_std.cpp) - реализация задачи;\\
+4) CMakeLists.txt - файл для настройки проекта.\\
+В ходе  работы необходимо применять систему контроля версий [Git][git].
+\item Провести эксперименты с помощью реализованной программы, cравнить время работы всех параллельных реализаций алгоритма на отсортированном, обратно отсортированном, частично-упорядоченном наборах данных и на наборе с одинаковыми значениями. Сделать выводы из проведённых экспериментов.
+\end{enumerate}
+
+\newpage
+\part*{Описание программной реализации}
+\paragraph{} В программе реализованы следующие функции:
+\begin{enumerate} 
+\item{Функция getOffset} позволяет получить смещение на желаемое количество байт (разрядов). Принимает на вход два аргумента: первый типа int - количество разрядов, второй - объединение двух переменных типа double и unsigned long long.
+\item{Функция radixSortForExp} сортирует данные по значениям заданного разряда. Принимает на вход указатель на vector<double> и переменную типа int - номер разряда.
+\item{Функция radixSort} осуществляет поразрядную сортировку. Функция принимает на вход указатель на вектор. В цикле for, количество итераций которого равно максимальному количеству разрядов числа, вызывается функция radixSortForExp для положительных и отрицательных элементов отдельно. Затем формируется результат: сначала в результирующий вектор записывается отсорированный вектор отрицательных чисел, потом - отсорированный вектор положительных чисел.
+\item{Функция compareAndExchange} сравнивает два вещественных числа и в случае, если второе меньше первого, меняет их местами. Функция принимает на вход два указателя на переменные типа double.
+\item{Функция shuffle}. На вход принимаются константные ссылки на два вектора: левый и правый. Данные векторов перемешиваются и объединяются в результирующий вектор, размер которого равен сумме размеров двух входных векторов, следующим образов: за каждым i-ым элементом левого вектора следует i-ый элемент правого вектора.
+\item{Функция batcherMerge} осуществляет слияние двух отсортированных векторов в один. На вход принимаются константные ссылки на два вектора: левый и правый. Создаётся вектор, в который записывается результат применения функции shuffle для двух входных векторов. После этого в цикле for, который продолжается пока счётчик не достигнет значения размера результирующего вектора, вызывается compareAndExchange для двух соседних элементов и счётчик увеличивается на 2. В ещё одном цикле for также вызывается функция compareAndExchange для i-го и i + halfSize элементов, где halfSize - это половина значения размера резльтирующего массива. Цикл продолжается пока счётчик, который с каждой итерацией становится больше на единицу, не достигнет значения halfSize.
+\item{Функция radixBatcherSort} осуществляет поразрядную сортировку для вещественных чисел (тип
+double) с четно-нечетным слиянием Бэтчера. Функция принимает на вход константную ссылку на вектор. Входной вектор разделяется на два равных подвектора: левый и правы. Причём если значение размера входного вектора нечётное, то в конец правого вектора добавляется элемент, равный максимальному значению типа double. Для каждого подвектора вызывается функция radixSort, а затем они сливаются с помощь функции batcherMerge. Если значение размера входного вектора нечётное, то последний элемент результирующего вектора удаляется.
+\end{enumerate} 
+
+\newpage
+\part*{Описание схемы распараллеливания}
+\section*{OpenMP версия}
+\paragraph{}Запоминаем номер потока в текущей команде вызывающего потока с помощью функции omp\_get\_thread\_num. Также устанавливаем количество потоков с помощью функции omp\_set\_num\_threads. 
+\paragraph{}Вектор данных разделяется на части, количество которых равно числу потоков. Затем для каждого локального вектора параллельно вызывается функция radixSort.
+\paragraph{}В разделе \#pragma omp critical, который позволяет выполнять только один поток за раз, производится слияние локального вектора с результирующим.
+
+\section*{TBB версия}
+\paragraph{}В этой версии объявляется класс TbbBatcherReductor, который реализует:
+\begin{enumerate} 
+\itemДефолтный конструктор по умолчанию.
+\itemПустой конструктор копирования с маркерным вторым параметром.
+\itemОператор, принимающий диапазон значений, над которыми будет выполняться алгоритм сортировки. Оператор сохраняет эту часть вектора в поле класса и вызывает для неё функцию radixSort.
+\itemМетод join, который производит слияние своего вектора с вектором объекта, переданного аргументом.
+\end{enumerate} 
+
+\paragraph{} В функции radixBatcherSort создаётся объект класса TbbBatcherReductor. Для распараллеливания цикла, в котором необходимо выполнить редукцию, используется шаблонная функция tbb::parallel\_reduce. Первый параметр функции – итерационное пространство. Второй параметр – функтор, класс, реализующий вычисления цикла через метод body::operator() и выполняющий редукцию. В качестве функтора выступает объект класса TbbBatcherReductor.
+
+\section*{std::thread версия}
+\paragraph{}Сначала создаётся несколько потоков, каждый из которых выполняет поразрядную сортировку для своего элемента вектора. Для каждого потока создаётся promise, который потом передаётся в него. Из promise получаем future, в который в конце работы потока присваивается результат. В главном потоке после этого совершается проход по всем future и происходит слияние в выходной массив. После завершения работы всех потоков, они объединяются обратно в главный поток с помощью функции join().
+
+
+\newpage
+\part*{Результаты экспериментов}
+\paragraph{} Тестирование поразрядной сортировки для вещественных чисел (тип double) с четно-нечетным слиянием Бэтчера проводилось на следующих типах данных:
+
+\begin{enumerate} 
+\itemОтсортированные данные.
+\item Обратно отсортированные данные.
+\item Частично отсортированные данные - это данные, которые содержат некоторые упорядоченные подмассивы. 
+\item Данные с одинаковыми значениями.
+\end{enumerate} 
+\paragraph{} Все эксперименты произведены на массивах длины 1000000 элементов. Было произведено 5 измерений для каждой технологии (из них выбирался наилучший).
+\paragraph{}\noindent\textbf{Результаты измерения времени работы в миллисекундах:}\\
+\begin{center}
+\begin{tabular}{|c | c | c | c | c | c |} 
+ \hline 
+ Технология/ массив & отсортированный & обрат. отсорт. & частично отсорт. & одинаковые \\ [0.5ex] 
+ \hline
+  OpenMP & 87 & 96 & 95 & 94  \\
+ \hline
+  TBB & 73 & 81 & 82 & 84 \\
+ \hline
+  std::thread & 77 &86 & 84 & 85 \\
+[1ex] 
+ \hline
+\end{tabular}
+\end{center}
+
+\newpage
+\part*{Выводы}
+\paragraph{}На основаниях результатов экспериментов можно сделать вывод, что все параллельные реализации дают примерно одинаковый результат. Однако наиболее эффективным оказался алгоритм, использующий технологию TBB. Наименее эффективным является алгоритм, использующий технологию OpenMP.  
+\paragraph{} Лучше всего поразрядная сортировка для вещественных чисел (тип double) с четно-нечетным слиянием Бэтчера работает с отсортированным массивом данных, так как здесь не требуется использовать перестановки. Хуже всего - с обратно отсортированным массивом, так как потребуется использовать максимальное число перестановок. Для двух оставшихся групп данных результаты примерно одинаковы.
+
+\newpage
+\part*{Заключение}
+\paragraph{}В данной лабораторной работе я реализовала алгоритм поразрядной сортировки для вещественных чисел (тип double) с четно-нечетным слиянием Бэтчера с использованием следующих технологий параллельного программирования: MPI, OpenMP, TBB и std::thread. В ходе выполнения лабораторной работы я сравнила эффективность различных параллельных реализаций данного алгоритма и пришла к выводу, что время работы всех вариантов примерно равны.
+\paragraph{}Конкретную технологию для параллельной реализации алгоритма поразрядной сортировки следует выбирать, отталкиваясь от изначальных целей и условий поставленной задачи. Наиболее эффективными оказались реализации с использованием TBB или std::thread. При помощи OpenMP достигается простота и удобство использования. А последовательная реализация позволяет сократить время разработки и отладки программы.
+
+\newpage
+\part*{Литература}
+\begin{enumerate} 
+\item Википедия: Поразрядная сортировка \\
+https://ru.wikipedia.org/?curid=190151\&oldid=127938332
+\item Оптимизация вычислительно трудоемкого программного модуля для архитектуры Intel Xeon Phi. Линейные сортировки
+ \\https://hpc-education.unn.ru/files/courses/XeonPhi/Lab07.pdf
+\item Справочник по библиотекам OpenMP \\https://learn.microsoft.com/ru-ru/cpp/parallel/openmp/reference/openmp-library-reference?view=msvc-170
+\item Конспекты лекций по параллельному программированию. Гергель В.П.,Сысоев А.В. Кафедра МОСТ
+\end{enumerate} 
+
+\newpage
+\part*{Приложение}
+\section{}main.cpp (общая часть для всех технологий)
+\begin{lstlisting}
+#include <gtest/gtest.h>
+#include "./radix_double_batcher_omp.h"
+
+
+void test(const std::vector<double>& expected, const std::vector<double>& sorted) {
+    ASSERT_EQ(expected.size(), sorted.size());
+    for (int i = 0; i < expected.size(); i++) {
+        ASSERT_DOUBLE_EQ(expected[i], sorted[i]);
+    }
+}
+
+TEST(ParallelOMP, OnlyPositiveEvenSize) {
+    std::vector<double> input = { 0.1, 0.0111, 1, 19, 120, 0.2, 0.00009, 2 };
+    std::vector<double> sorted = radixBatcherSort(input);
+    std::vector<double> expected = { 0.00009, 0.0111, 0.1, 0.2, 1, 2, 19, 120 };
+    test(expected, sorted);
+}
+
+TEST(ParallelOMP, OnlyPositiveOddSize) {
+    std::vector<double> input = { 0.1, 0.0111, 1, 19, 120, 0.2, 0.00009, 2, 17 };
+    std::vector<double> sorted = radixBatcherSort(input);
+    std::vector<double> expected = { 0.00009, 0.0111, 0.1, 0.2, 1, 2, 17, 19, 120 };
+    test(expected, sorted);
+}
+
+TEST(ParallelOMP, OnlyNegativeEvenSize) {
+    std::vector<double> input = { -0.1, -0.0111, -1, -19, -120, -0.2, -0.00009, -2 };
+    std::vector<double> sorted = radixBatcherSort(input);
+    std::vector<double> expected = { -120, -19, -2, -1, -0.2, -0.1, -0.0111, -0.00009 };
+    test(expected, sorted);
+}
+
+TEST(ParallelOMP, OnlyNegativeOddSize) {
+    std::vector<double> input = { -0.1, -0.0111, -1, -19, -120, -0.2, -0.00009, -2, -17 };
+    std::vector<double> sorted = radixBatcherSort(input);
+    std::vector<double> expected = { -120, -19, -17, -2, -1, -0.2, -0.1, -0.0111, -0.00009 };
+    test(expected, sorted);
+}
+
+TEST(ParallelOMP, PositiveAndNegativeEvenSize) {
+    std::vector<double> input = { -0.1, 0.0111, 1, -19, 120, -0.2, -0.00009, -2 };
+    std::vector<double> sorted = radixBatcherSort(input);
+    std::vector<double> expected = { -19, -2, -0.2, -0.1, -0.00009, 0.0111, 1, 120 };
+    test(expected, sorted);
+}
+\end{lstlisting}
+\section{} radix\_double\_batcher.h (общая часть для всех технологий)
+\begin{lstlisting}
+#include <vector>
+
+std::vector<double> radixBatcherSort(const std::vector<double>& base);
+
+#endif
+\end{lstlisting}
+\section{} radix\_double\_batcher.cpp
+\begin{lstlisting}
+#include <vector>
+#include <iterator>
+#include <limits>
+#include <algorithm>
+#include "../../../modules/task_1/kuleva_a_radix_double_batcher/ radix_double_batcher.h"
+
+
+using ull = uint64_t;
+
+const int preMask = (1 << 8);
+
+union {
+    ull asLong;
+    double asDouble;
+} value;
+
+ull getOffset(ull value, int exp) {
+    return (value >> (8 * exp));
+}
+
+void radixSortForExp(std::vector<double>* _base, int exp) {
+    auto& base = *_base;
+    std::vector<double> result(base.size());
+    std::vector<int> sorterArray((1 << 8), 0);
+    int mask = preMask - 1;
+
+    for (double element : base) {
+        value.asDouble = element;
+        const int expValue = mask & getOffset(value.asLong, exp);
+        sorterArray[expValue]++;
+    }
+
+    for (int i = 1; i < sorterArray.size(); i++) {
+        sorterArray[i] += sorterArray[i - 1];
+    }
+
+    for (int i = base.size() - 1; i >= 0; i--) {
+        value.asDouble = base[i];
+        const int expValue = mask & getOffset(value.asLong, exp);
+        result[sorterArray[expValue] - 1] = base[i];
+        sorterArray[expValue]--;
+    }
+
+    for (int i = 0; i < base.size(); i++)
+        base[i] = result[i];
+}
+
+void radixSort(std::vector<double>* _base) {
+    auto& base = *_base;
+    int maxExp = sizeof(double);
+
+    std::vector<double> negative, positive;
+
+    std::copy_if(base.begin(), base.end(), std::back_inserter(negative), [](double x) { return x < 0; });
+    std::copy_if(base.begin(), base.end(), std::back_inserter(positive), [](double x) { return x >= 0; });
+
+    for (int exp = 0; exp < maxExp; exp++) {
+        radixSortForExp(&negative, exp);
+        radixSortForExp(&positive, exp);
+    }
+
+    auto last = std::copy(negative.rbegin(), negative.rend(), base.begin());
+    std::copy(positive.begin(), positive.end(), last);
+}
+
+void compareAndExchange(double* a, double* b) {
+    if (*b < *a) std::swap(*a, *b);
+}
+
+std::vector<double> shuffle(const std::vector<double>& left, const std::vector<double>& right) {
+    std::vector<double> result(left.size() + right.size());
+    for (int i = 0, j = 0; i < result.size(); i += 2, j++) {
+        result[i] = left[j];
+        result[i + 1] = right[j];
+    }
+    return result;
+}
+
+std::vector<double> batcherMerge(const std::vector<double>& left, const std::vector<double>& right) {
+    auto result = shuffle(left, right);
+    std::merge(left.begin(), left.end(), right.begin(), right.end(), result.begin());
+    for (int i = 0; i < result.size(); i += 2)
+        compareAndExchange(&result[i], &result[i + 1]);
+    int halfSize = result.size() / 2;
+    for (int i = 0; i + halfSize < result.size(); i++)
+        compareAndExchange(&result[i], &result[i + halfSize]);
+    return result;
+}
+
+std::vector<double> radixBatcherSort(const std::vector<double>& base) {
+    int size = (base.size() % 2 != 0) ? base.size() + 1 : base.size();
+
+    const int half = size / 2;
+    std::vector<double> left(base.begin(), base.begin() + half);
+    std::vector<double> right(base.begin() + half, base.end());
+
+    if (base.size() % 2 != 0)
+        right.push_back(std::numeric_limits<double>::max());
+
+    radixSort(&left);
+    radixSort(&right);
+
+    auto result = batcherMerge(left, right);
+
+    if (base.size() % 2 != 0)
+        result.pop_back();
+
+    return result;
+}
+
+\end{lstlisting}
+
+\section{} radix\_double\_batcher\_omp.cpp
+\begin{lstlisting}
+#include <omp.h>
+#include <vector>
+#include <iostream>
+#include <iterator>
+#include <limits>
+#include <algorithm>
+#include <utility>
+#include "../../../modules/task_2/kuleva_a_radix_double_batcher_omp/ radix_double_batcher_omp.h"
+
+
+using ull = uint64_t;
+
+union Value {
+    ull asLong;
+    double asDouble;
+};
+
+ull getOffset(ull value, int exp) {
+    return (value >> (8 * exp));
+}
+
+void radixSortForExp(std::vector<double>* _base, int exp) {
+    Value value{ 0 };
+    auto& base = *_base;
+    std::vector<double> result(base.size());
+    std::vector<int> sorterArray((1 << 8), 0);
+    int mask = (1 << 8) - 1;
+
+    for (double element : base) {
+        value.asDouble = element;
+        const int expValue = mask & getOffset(value.asLong, exp);
+        sorterArray[expValue]++;
+    }
+
+    for (int i = 1; i < sorterArray.size(); i++) {
+        sorterArray[i] += sorterArray[i - 1];
+    }
+
+    for (int i = base.size() - 1; i >= 0; i--) {
+        value.asDouble = base[i];
+        const int expValue = mask & getOffset(value.asLong, exp);
+        result[sorterArray[expValue] - 1] = base[i];
+        sorterArray[expValue]--;
+    }
+
+    for (int i = 0; i < base.size(); i++)
+        base[i] = result[i];
+}
+
+void radixSort(std::vector<double>* _base) {
+    auto& base = *_base;
+    int maxExp = sizeof(double);
+
+    std::vector<double> negative, positive;
+
+    std::copy_if(base.begin(), base.end(), std::back_inserter(negative), [](double x) { return x < 0; });
+    std::copy_if(base.begin(), base.end(), std::back_inserter(positive), [](double x) { return x >= 0; });
+
+    for (int exp = 0; exp < maxExp; exp++) {
+        radixSortForExp(&negative, exp);
+        radixSortForExp(&positive, exp);
+    }
+
+    auto last = std::copy(negative.rbegin(), negative.rend(), base.begin());
+    std::copy(positive.begin(), positive.end(), last);
+}
+
+void compareAndExchange(double* a, double* b) {
+    if (*b < *a) std::swap(*a, *b);
+}
+
+std::vector<double> shuffle(const std::vector<double>& base) {
+    std::vector<double> result(base);
+    const int half = base.size() / 2;
+    for (int i = 0, j = 0; j + half < result.size() && i + 1 < result.size(); i += 2, j++) {
+        result[i] = base[j];
+        result[i + 1] = base[j + half];
+    }
+    return result;
+}
+
+std::vector<double> batcherMerge(const std::vector<double>& left, const std::vector<double>& right) {
+    std::vector<double> result(left.size() + right.size());
+    result = shuffle(result);
+    std::merge(left.begin(), left.end(), right.begin(), right.end(), result.begin());
+    return result;
+}
+
+std::vector<double> radixBatcherSort(const std::vector<double>& base) {
+    std::vector<double> result;
+
+#pragma omp parallel
+    {
+        const int tid = omp_get_thread_num();
+        const int tc = omp_get_num_threads();
+        const int step = base.size() / tc + ((base.size() % tc) != 0);
+        const int rightOffset = std::min(step * (tid + 1), static_cast<int>(base.size()));
+        std::vector<double> local(base.begin() + step * tid, base.begin() + rightOffset);
+        radixSort(&local);
+#pragma omp critical
+        {
+            result = batcherMerge(local, result);
+        }
+    }
+
+    return result;
+}
+\end{lstlisting}
+
+\section{} radix\_double\_batcher\_tbb.cpp
+\begin{lstlisting}
+#include <tbb/tbb.h>
+#include <vector>
+#include <iterator>
+#include <limits>
+#include <algorithm>
+#include "../../../modules/task_3/kuleva_a_radix_double_batcher_tbb/ radix_double_batcher_tbb.h"
+
+
+using ull = uint64_t;
+
+union Value {
+    ull asLong;
+    double asDouble;
+};
+
+ull getOffset(ull value, int exp) {
+    return (value >> (8 * exp));
+}
+
+void radixSortForExp(std::vector<double>* _base, int exp) {
+    Value value{ 0 };
+    auto& base = *_base;
+    std::vector<double> result(base.size());
+    std::vector<int> sorterArray((1 << 8), 0);
+    int mask = (1 << 8) - 1;
+
+    for (double element : base) {
+        value.asDouble = element;
+        const int expValue = mask & getOffset(value.asLong, exp);
+        sorterArray[expValue]++;
+    }
+
+    for (int i = 1; i < sorterArray.size(); i++) {
+        sorterArray[i] += sorterArray[i - 1];
+    }
+
+    for (int i = base.size() - 1; i >= 0; i--) {
+        value.asDouble = base[i];
+        const int expValue = mask & getOffset(value.asLong, exp);
+        result[sorterArray[expValue] - 1] = base[i];
+        sorterArray[expValue]--;
+    }
+
+    for (int i = 0; i < base.size(); i++)
+        base[i] = result[i];
+}
+
+void radixSort(std::vector<double>* _base) {
+    auto& base = *_base;
+    int maxExp = sizeof(double);
+
+    std::vector<double> negative, positive;
+
+    std::copy_if(base.begin(), base.end(), std::back_inserter(negative), [](double x) { return x < 0; });
+    std::copy_if(base.begin(), base.end(), std::back_inserter(positive), [](double x) { return x >= 0; });
+
+    for (int exp = 0; exp < maxExp; exp++) {
+        radixSortForExp(&negative, exp);
+        radixSortForExp(&positive, exp);
+    }
+
+    auto last = std::copy(negative.rbegin(), negative.rend(), base.begin());
+    std::copy(positive.begin(), positive.end(), last);
+}
+
+void compareAndExchange(double* a, double* b) {
+    if (*b < *a) std::swap(*a, *b);
+}
+
+std::vector<double> shuffle(const std::vector<double>& base) {
+    std::vector<double> result(base);
+    const int half = base.size() / 2;
+    for (int i = 0, j = 0; j + half < result.size() && i + 1 < result.size(); i += 2, j++) {
+        result[i] = base[j];
+        result[i + 1] = base[j + half];
+    }
+    return result;
+}
+
+std::vector<double> batcherMerge(const std::vector<double>& left, const std::vector<double>& right) {
+    std::vector<double> result(left.size() + right.size());
+    result = shuffle(result);
+    std::merge(left.begin(), left.end(), right.begin(), right.end(), result.begin());
+    return result;
+}
+
+struct TbbBatcherReductor {
+    mutable std::vector<double> result;
+    TbbBatcherReductor() = default;
+    TbbBatcherReductor(const TbbBatcherReductor& o, tbb::split) {}
+
+    void operator()(const tbb::blocked_range<std::vector<double>::iterator>& r) {
+        std::copy(r.begin(), r.end(), std::back_inserter(result));
+        radixSort(&result);
+    }
+
+    void join(const TbbBatcherReductor& rhs) {
+        result = batcherMerge(rhs.result, result);
+    }
+};
+
+std::vector<double> radixBatcherSort(const std::vector<double>& base) {
+    std::vector<double> tmp(base);
+
+    TbbBatcherReductor reductor;
+    tbb::parallel_reduce(
+        tbb::blocked_range<std::vector<double>::iterator>(tmp.begin(), tmp.end()),
+        reductor);
+
+    return reductor.result;
+}
+\end{lstlisting}
+
+\section{} radix\_double\_batcher\_std.cpp
+\begin{lstlisting}
+#include <omp.h>
+#include <vector>
+#include <iostream>
+#include <iterator>
+#include <limits>
+#include <algorithm>
+#include <utility>
+#include "../../../3rdparty/unapproved/unapproved.h"
+#include
+"../../../modules/task_4/kuleva_a_radix_double_batcher_std/ radix_double_batcher_std.h"
+
+
+
+using ull = uint64_t;
+
+union Value {
+    ull asLong;
+    double asDouble;
+};
+
+ull getOffset(ull value, int exp) {
+    return (value >> (8 * exp));
+}
+
+void radixSortForExp(std::vector<double>* _base, int exp) {
+    Value value{ 0 };
+    auto& base = *_base;
+    std::vector<double> result(base.size());
+    std::vector<int> sorterArray((1 << 8), 0);
+    int mask = (1 << 8) - 1;
+
+    for (double element : base) {
+        value.asDouble = element;
+        const int expValue = mask & getOffset(value.asLong, exp);
+        sorterArray[expValue]++;
+    }
+
+    for (int i = 1; i < sorterArray.size(); i++) {
+        sorterArray[i] += sorterArray[i - 1];
+    }
+
+    for (int i = base.size() - 1; i >= 0; i--) {
+        value.asDouble = base[i];
+        const int expValue = mask & getOffset(value.asLong, exp);
+        result[sorterArray[expValue] - 1] = base[i];
+        sorterArray[expValue]--;
+    }
+
+    for (int i = 0; i < base.size(); i++)
+        base[i] = result[i];
+}
+
+void radixSort(std::vector<double>* _base) {
+    auto& base = *_base;
+    int maxExp = sizeof(double);
+
+    std::vector<double> negative, positive;
+
+    std::copy_if(base.begin(), base.end(), std::back_inserter(negative), [](double x) { return x < 0; });
+    std::copy_if(base.begin(), base.end(), std::back_inserter(positive), [](double x) { return x >= 0; });
+
+    for (int exp = 0; exp < maxExp; exp++) {
+        radixSortForExp(&negative, exp);
+        radixSortForExp(&positive, exp);
+    }
+
+    auto last = std::copy(negative.rbegin(), negative.rend(), base.begin());
+    std::copy(positive.begin(), positive.end(), last);
+}
+
+void compareAndExchange(double* a, double* b) {
+    if (*b < *a) std::swap(*a, *b);
+}
+
+std::vector<double> shuffle(const std::vector<double>& base) {
+    std::vector<double> result(base);
+    const int half = base.size() / 2;
+    for (int i = 0, j = 0; j + half < result.size() && i + 1 < result.size(); i += 2, j++) {
+        result[i] = base[j];
+        result[i + 1] = base[j + half];
+    }
+    return result;
+}
+
+std::vector<double> batcherMerge(const std::vector<double>& left, const std::vector<double>& right) {
+    std::vector<double> result(left.size() + right.size());
+    result = shuffle(result);
+    std::merge(left.begin(), left.end(), right.begin(), right.end(), result.begin());
+    return result;
+}
+
+std::vector<double> radixBatcherSort(const std::vector<double>& base) {
+    std::vector<double> result;
+
+    const int tc = std::thread::hardware_concurrency();
+    const int step = base.size() / tc + ((base.size() % tc) != 0);
+
+    std::vector<std::promise<std::vector<double>>> promises(tc);
+    std::vector<std::future<std::vector<double>>> futures(tc);
+    std::vector<std::thread> threads(tc);
+
+    for (int tid = 0; tid < tc; tid++) {
+        futures[tid] = promises[tid].get_future();
+        threads[tid] = std::thread([&](int localTid, std::promise<std::vector<double>> promise) {
+            const int rightShift = std::min(step * (localTid + 1), static_cast<int>(base.size()));
+            std::vector<double> local(base.begin() + step * localTid, base.begin() + rightShift);
+
+            radixSort(&local);
+            promise.set_value(std::move(local));
+            }, tid, std::move(promises[tid]));
+    }
+
+    for (int tid = 0; tid < tc; tid++) {
+        threads[tid].join();
+        std::vector<double> local = futures[tid].get();
+        result = batcherMerge(local, result);
+    }
+
+    return result;
+}
+\end{lstlisting}
+\end{document}
