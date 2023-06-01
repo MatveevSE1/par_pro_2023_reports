@@ -1,0 +1,362 @@
+\documentclass[14pt, a4paper]{extarticle}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[a4paper,
+left=2cm,
+right=2cm,
+top=2cm,
+bottom=2cm]{geometry}
+\usepackage{color}
+\usepackage{mathtools}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{tocloft}
+\usepackage{indentfirst}
+\usepackage{enumitem}
+\usepackage[russian]{babel}
+
+\setlength{\parindent}{0.8cm}
+\setlength{\parskip}{0.4cm}
+\renewcommand{\contentsname}{}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=none,
+  language=C++,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=4
+}
+
+\title{}
+\author{}
+\date{}
+
+\begin{document}
+  \begin{titlepage}
+    \begin{center}
+      {\bfseries МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ \\
+        РОССИЙСКОЙ ФЕДЕРАЦИИ}
+      \\
+      Федеральное государственное автономное образовательное учреждение высшего образования
+      \\
+      {\bfseries «Национальный исследовательский Нижегородский государственный университет им. Н.И. Лобачевского»\\(ННГУ)
+        \\Институт информационных технологий, математики и механики} \\ Кафедра Математического обеспечения и суперкомпьютерных технологий \\ Направление подготовки «Программная инженерия»
+    \end{center}
+
+    \vspace{8em}
+
+    \begin{center}
+      ОТЧЕТ \\ по дисциплине «Параллельное программирование» \\ по лабораторной работе \\
+      «Вычисление многомерных интегралов с использованием многошаговой схемы (метод прямоугольников)»
+    \end{center}
+
+    \vspace{5em}
+
+
+    \begin{flushright}
+      {\bfseries Выполнила:} студентка группы\\382008-1\\Тарасова А.А. \linebreak\linebreak\linebreak
+      {\bfseries Проверил:} младший научный\\сотрудник\\Нестеров А.Ю.  
+    \end{flushright}
+
+
+    \vspace{\fill}
+
+    \begin{center}
+      Нижний Новгород\\2023
+    \end{center}
+
+  \end{titlepage}
+
+  \tableofcontents
+  \thispagestyle{empty}
+  \newpage
+
+  \pagestyle{plain}
+  \setcounter{page}{3}
+
+  \section{Введение}
+    Задача вычисления определенного интеграла для некоторой заданной на отрезке [a,b] функции f(x) является классической задачей математического анализа. Если для функции f(x) не существует первообразных среди элементарных функций или ее вычисление может оказаться очень трудоемким, значение интеграла вычисляется с помощью квадратурных формул, одной из которых является формула прямоугольников.
+
+    Метод прямоугольников — метод численного интегрирования функции, заключающийся в замене подынтегральной функции на константу на каждом элементарном отрезке. Если рассмотреть график подынтегральной функции, то метод будет заключаться в приближённом вычислении площади под графиком суммированием площадей конечного числа прямоугольников, ширина которых будет определяться расстоянием между соответствующими соседними узлами интегрирования, а высота — значением подынтегральной функции в этих узлах.
+    
+    В рамках лабораторной работы изучаются способы параллельных вычислений многомерных интегралов методом прямоугольников. Особое внимание уделяется рассмотрению библиотек OpenMP и TBB.
+
+  \newpage
+
+  \section{Постановка задачи}
+  Необходимо реализовать три варианта программы для вычисления трехмерных интегралов методом прямоугольников с использованием языка программирования C++.
+   \begin{itemize}
+\itemПоследовательная программа.
+\itemПрограмма с использованием библиотеки OpenMP.
+\itemПрограмма с использованием библиотеки TBB.
+\end{itemize}
+Для проверки корректности выполнения каждой программы использовать фреймворк Google Test.
+После этого необходимо сравнить время работы каждой из реализаций и сделать вывод об их эффективности.
+  \newpage
+
+  \section{Описание алгоритма}
+
+  \begin{enumerate}
+    \item Задать функцию f(x, y, z)
+      
+     \item Определить пределы интегрирования $a_{1}$, $b_{1}$, $a_{2}$, $b_{2}$, $a_{3}$, $b_{3}$ и шаг интегрирования h;
+
+     \item Вычислить значения участков разбиения $n_{1}$ = $\frac{b_{1} - a_{1}}{h}$, $n_{2}$ = $\frac{b_{2} - a_{2}}{h}$, $n_{3}$ = $\frac{b_{3} - a_{3}}{h}$;
+
+     \item Вычислить значения x, y, z в точках $x_{i}$ = $a_{1} + i*h + \frac{h}{2}$, $y_{i}$ = $a_{2} + i*h + \frac{h}{2}$, $z_{i}$ = $a_{3} + i*h + \frac{h}{2}$;
+     
+    \item Вычислить приближенное значение определенного интеграла F по формуле
+    $F(x, y, z)$ = $hhh\displaystyle\sum_{i=0}^{n_{1} - 1}\displaystyle\sum_{j=0}^{n_{2} - 1}\displaystyle\sum_{k=0}^{n_{3} - 1}f(x_{i}, y_{j}, z_{k})$
+  \end{enumerate}
+  \newpage
+
+  \section{Описание схемы распараллеливания}
+Один из наиболее простых подходов распараллеливания реализации алгоритма - геометрическая декомпозиция данных, предполагающая разделение данных на части и применение к ним одного и того же алгоритма. Один из способов геометрического разделения данных - подсчет с разделением сетки интегрирования по столбцам. Вычисление функции в одном узле сетки не зависит от соседних узлов.
+
+Параллельные реализации могут быть сведены к следующему описанию:
+  \begin{enumerate}
+    \item Вычислить значения x, y, z в точках;
+    \item Выполнить алгоритм метода прямоугольников для каждого значения x, y, z;
+    \item Сложить результаты работы всех потоков.
+  \end{enumerate}
+
+
+  \newpage
+
+  \section{Результаты экспериментов}
+  Для разных функций с границами $a_{1}$ = 0, $a_{2}$ = 0, $a_{3}$ = 0, $b_{1}$ = 2, $b_{2}$ = 2, $b_{3}$ = 2 и шагом интегрирования h = 0.04 произведено 10 экспериментов. Среднее время выполнения программ, а также максимальное и минимальное время выполнения отражены в таблицах:
+ 
+  \noindent\textbf{Среднее время работы в миллисекундах:}\\\\
+    \begin{tabular}{|c | c | c | c | c | c |} 
+      \hline
+       & $x + y + z$ & $xyz$ & $sin(x)cos(y) + z$ & $exp^x + y^{2}z$ & $x^3 + y^2 + z$ \\
+      \hline
+      Seq & 35 & 40  & 68 & 36 & 30 \\ 
+      \hline
+      OpenMP & 38 & 41  & 53 & 50 & 28 \\ 
+      \hline
+      TBB & 22 & 28  & 21 & 35 & 19 \\ 
+      \hline
+    \end{tabular}
+
+    \noindent\textbf{Максимальное время работы в миллисекундах:}\\\\
+    \begin{tabular}{|c | c | c | c | c | c |} 
+      \hline
+       & $x + y + z$ & $xyz$ & $sin(x)cos(y) + z$ & $exp^x + y^{2}z$ & $x^3 + y^2 + z$ \\
+      \hline
+      Seq & 81 & 87  & 204 & 73 & 39 \\ 
+      \hline
+      OpenMP & 85 & 77  & 136 & 111 & 41 \\ 
+      \hline
+      TBB & 46 & 79  & 38 & 95 & 33 \\ 
+      \hline
+    \end{tabular}
+
+\noindent\textbf{Минимальное время работы в миллисекундах:}\\\\
+    \begin{tabular}{|c | c | c | c | c | c |} 
+      \hline
+       & $x + y + z$ & $xyz$ & $sin(x)cos(y) + z$ & $exp^x + y^{2}z$ & $x^3 + y^2 + z$ \\
+      \hline
+      Seq & 22 & 19  & 27 & 21 & 20 \\ 
+      \hline
+      OpenMP & 17 & 18  & 28 & 22 & 18 \\ 
+      \hline
+      TBB & 11 & 11  & 11 & 9 & 8 \\ 
+      \hline
+    \end{tabular}
+
+  \newpage
+
+  \section{Вывод}
+Для рассматриваемого параллаельного алгоритма использование многопоточности и параллельных программ является целесообразным. Наиболее эффективной по времени выполнения является программа с использованием библиотеки TBB.
+
+  \newpage
+
+  \section{Заключение}
+В процессе выполнения лабораторной работы были изучены и реализованы 2 параллельных версии и последовательная версия метода прямоугольников. На основе результатов экспериментов были сделаны выводы о преимуществе и недостатках каждого подхода.
+
+Если требуется наибольшая производительность и гибкость в управлении потоками, лучше использовать библиотеку TBB в процессе написания кода. Если требуется простота использования, то стоит использовать библиотеку OpenMP. Однако, библиотека OpenMP имеет меньшую производительность, чем TBB. Если важна скорость разработки и отладки программы, то предпочтительнее использовать последовательную реализацию.
+ 
+  \newpage
+
+    \section{Литература}
+    
+    \begin{enumerate}
+        \item Образовательный комплекс «Параллельные численные методы». Козинов Е. А., Мееров И. Б., Сысоев А. В. (При поддержке компании Intel)
+        \item  Метод прямоугольников https://ru.wikipedia.org/wiki/Метод-прямоугольников 
+    \end{enumerate}
+
+  \newpage
+
+  \section{Приложение}
+
+  \subsection{Реализации метода прямоугольников}
+    \subsubsection{Последовательная}
+  \begin{lstlisting}
+
+double getSequential(double a1, double b1, double a2, double b2, double a3, double b3, double h, const std::function<double(double, double, double)>& fun) {
+    int i, j, k, n1, n2, n3;
+    double sum = 0;
+    n1 = static_cast<int>((b1 - a1) / h);
+    n2 = static_cast<int>((b2 - a2) / h);
+    n3 = static_cast<int>((b3 - a3) / h);
+    for (i = 0; i < n1; i++)
+        for (j = 0; j < n2; j++)
+            for (k = 0; k < n3; k++) {
+                const double x = a1 + i * h + h / 2;
+                const double y = a2 + j * h + h / 2;
+                const double z = a3 + k * h + h / 2;
+                sum += h * h * h * fun(x, y, z);
+            }
+    return sum;
+}
+
+  \end{lstlisting}
+  \newpage
+  \subsubsection{OMP}
+  \begin{lstlisting}
+double getParallel(double a1, double b1, double a2, double b2, double a3, double b3, double h, const std::function<double(double, double, double)>& fun) {
+    int i, j, k, n1, n2, n3;
+    double sum = 0;
+    n1 = static_cast<int>((b1 - a1) / h);
+    n2 = static_cast<int>((b2 - a2) / h);
+    n3 = static_cast<int>((b3 - a3) / h);
+    #pragma omp parallel for private (x, y, z, k)/reduction(+:sum)
+    for (i = 0; i < n1; i++)
+        for (j = 0; j < n2; j++)
+            for (k = 0; k < n3; k++) {
+                const double x = a1 + i * h + h / 2;
+                const double y = a2 + j * h + h / 2;
+                const double z = a3 + k * h + h / 2;
+                sum += h * h * h * fun(x, y, z);
+            }
+    return sum;
+  \end{lstlisting}
+  \newpage
+    \subsubsection{TBB}
+  \begin{lstlisting}
+
+class Integral {
+ private:
+    double h;
+    double a1, a2, a3;
+    double n1, n2, n3;
+    double res;
+    const std::function<double(double, double, double)>& fun;
+
+ public:
+    explicit Integral(double h, double n1, double n2, double n3, double a1, double a2, double a3,
+        const std::function<double(double, double, double)>& _fun) :
+        h(h), n1(n1), n2(n2), n3(n3), a1(a1), a2(a2), a3(a3), res(0), fun(_fun) {}
+
+    Integral(const Integral& i, tbb::split) :
+        h(i.h), n1(i.n1), n2(i.n2), n3(i.n3), a1(i.a1), a2(i.a2), a3(i.a3), res(0), fun(i.fun) {}
+
+    void operator()(const tbb::blocked_range3d<int>& r) {
+        int i = r.pages().begin(), i_end = r.pages().end();
+        int j = r.rows().begin(), j_end = r.rows().end();
+        int k = r.cols().begin(), k_end = r.cols().end();
+
+        for (i = r.pages().begin(); i < i_end; i++)
+            for (j = r.rows().begin(); j < j_end; j++)
+                for (k = r.cols().begin(); k < k_end; k++) {
+                    const double x = a1 + i * h + h / 2;
+                    const double y = a2 + j * h + h / 2;
+                    const double z = a3 + k * h + h / 2;
+                    res += h * h * h * fun(x, y, z);
+                }
+    }
+
+    void join(const Integral& i) {
+        res += i.res;
+    }
+    double result() {
+        return res;
+    }
+};
+
+double getParallel(double a1, double b1, double a2, double b2, double a3,
+    double b3, double h, const std::function<double(double, double, double)>& fun) {
+    int n1 = static_cast<int>((b1 - a1) / h);
+    int n2 = static_cast<int>((b2 - a2) / h);
+    int n3 = static_cast<int>((b3 - a3) / h);
+    Integral integral(h, n1, n2, n3, a1, a2, a3, fun);
+    tbb::parallel_reduce(tbb::blocked_range3d<int>(0, n1, 0, n2, 0, n3), integral);
+    return integral.result();
+}
+
+  \end{lstlisting}
+  \newpage
+\subsection{Тестирование}
+\begin{lstlisting}
+
+double f1(double x, double y, double z) {
+    return x + y + z;
+}
+
+double f2(double x, double y, double z) {
+    return x * y * z;
+}
+
+double f3(double x, double y, double z) {
+    return sin(x) * cos(y) + z;
+}
+
+double f4(double x, double y, double z) {
+    return exp(x) + y * y * z;
+}
+
+double f5(double x, double y, double z) {
+    return x * x * x + y * y + z;
+}
+
+TEST(Parallel, Test_inegral_1) {
+    ASSERT_DOUBLE_EQ(getSequential(0.0, 0.0, 0.0,
+        2.0, 2.0, 2.0, 1.0, f1), getParallel(0.0, 0.0, 0.0,
+        2.0, 2.0, 2.0, 1.0, f1));
+}
+
+TEST(Parallel, Test_inegral_2) {
+    ASSERT_DOUBLE_EQ(getSequential(0.0, 1.0, 0.0,
+        2.0, 4.0, 3.0, 1.0, f2), getParallel(0.0, 1.0, 0.0,
+        2.0, 4.0, 3.0, 1.0, f2));
+}
+
+TEST(Parallel, Test_inegral_3) {
+    ASSERT_DOUBLE_EQ(getSequential(4.0, 2.0, 1.0,
+        6.0, 3.0, 3.0, 1.0, f3), getParallel(4.0, 2.0, 1.0,
+        6.0, 3.0, 3.0, 1.0, f3));
+}
+
+TEST(Parallel, Test_inegral_4) {
+    ASSERT_DOUBLE_EQ(getSequential(0.0, 1.0, 2.0, 2.0,
+        3.0, 4.0, 1.0, f4), getParallel(0.0, 1.0, 2.0, 2.0,
+        3.0, 4.0, 1.0, f4));
+}
+
+TEST(Parallel, Test_inegral_5) {
+    ASSERT_DOUBLE_EQ(getSequential(5.0, 3.0, 7.0,
+        6.0, 7.0, 8.0, 1.0, f5), getParallel(5.0, 3.0, 7.0,
+        6.0, 7.0, 8.0, 1.0, f5));
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+
+\end{lstlisting}
+\end{document}
