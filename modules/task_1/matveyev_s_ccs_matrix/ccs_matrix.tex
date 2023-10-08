@@ -1,0 +1,581 @@
+\documentclass{report}
+
+\usepackage[warn]{mathtext}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{luainputenc}
+\usepackage[english, russian]{babel}
+\usepackage[pdfpagemode=UseNone,colorlinks,allcolors=black]{hyperref}
+\usepackage{tempora}
+\usepackage[12pt]{extsizes}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{soul}
+
+\sethlcolor{gray}
+
+\geometry{a4paper,top=2cm,bottom=2cm,left=2.5cm,right=1.5cm}
+\setlength{\parskip}{0.5cm}
+\setlist{nolistsep, itemsep=0.3cm,parsep=0pt}
+
+\usepackage{listings}
+\lstset{language=C++,
+        basicstyle=\footnotesize,
+		keywordstyle=\color{blue}\ttfamily,
+		stringstyle=\color{red}\ttfamily,
+		commentstyle=\color{green}\ttfamily,
+		morecomment=[l][\color{red}]{\#}, 
+		tabsize=4,
+		breaklines=true,
+  		breakatwhitespace=true,
+  		title=\lstname,       
+}
+
+\makeatletter
+\renewcommand\@biblabel[1]{#1.\hfil}
+\makeatother
+
+\begin{document}
+
+\begin{titlepage}
+
+\begin{center}
+Министерство науки и высшего образования Российской Федерации
+\end{center}
+
+\begin{center}
+Федеральное государственное автономное образовательное учреждение высшего образования \\
+Национальный исследовательский Нижегородский государственный университет им. Н.И. Лобачевского
+\end{center}
+
+\begin{center}
+Институт информационных технологий, математики и механики
+\end{center}
+
+\vspace{4em}
+
+\begin{center}
+\textbf{\LargeОтчет по лабораторной работе} \\
+\end{center}
+\begin{center}
+\textbf{\Large<<Умножение разреженных матриц. Элементы типа double. Формат хранения матрицы – столбцовый (CCS)>>} \\
+\end{center}
+
+\vspace{4em}
+
+\newbox{\lbox}
+\savebox{\lbox}{\hbox{text}}
+\newlength{\maxl}
+\setlength{\maxl}{\wd\lbox}
+\hfill\parbox{7cm}{
+\hspace*{5cm}\hspace*{-5cm}\textbf{Выполнил:} \\ студент группы 382008-3\\Матвеев С.Э.\\
+\\
+\hspace*{5cm}\hspace*{-5cm}\textbf{Проверил:}\\ доцент кафедры МОСТ, \\ кандидат технических наук \\ Сысоев А. В.\\
+}
+\vspace{\fill}
+
+\begin{center} Нижний Новгород \\ 2023 \end{center}
+
+\end{titlepage}
+
+\setcounter{page}{2}
+
+% Содержание
+\tableofcontents
+\newpage
+
+% Введение
+\section*{Введение}
+\addcontentsline{toc}{section}{Введение}
+\par Разреженные матрицы -- это матрицы, в которых среди элементов преобладают нулевые значения. Подобные матрицы нередко встречаются во многих областях научных вычислений. Например, часто попытки формулировки задач в социологии, экологии и бихевиоральных науках приводят к системе уравнений, в которых матрицы коэффициентов имеют разреженный вид и большие размеры.  Существуют различные форматы хранения матриц. Но работая с разреженными матрицами большого размера, например 100{.}000$\times$500{.}000, будет нерационально тратить ресурсы на хранение всех нулевых элементов.
+
+\par Один из таких форматов -- столбцовый (CCS), в котором хранятся только ненулевые элементы матрицы и их индексы.
+
+\par В данной работе рассмотрены последовательная и параллельная (при помощи библиотеки OpenMP) реализации задачи умножения разреженных матриц столбцового формата с элементами вещественного типа. Также по результатам работы были сформулированы выводы о скоростях работы реализованных решений.
+
+\newpage
+
+% Постановка задачи
+\section*{Постановка задачи}
+\addcontentsline{toc}{section}{Постановка задачи}
+\par Необходимо реализовать три варианта программы для решения задачи умножения разреженных матриц, которые представлены в столбцовом (CCS) формате хранения и содержат элементы типа double, на языке C$++$: 
+    \begin{itemize}
+    \item{последовательный вариант,}
+    \item{параллельный вариант с использованием библиотеки OpenMP.}
+    \end{itemize}
+	
+\par Результатом работы для каждого из вариантов должна быть матрица в строковом формате, хранящая элементы типа double и являющаяся произведением заданных матриц.
+	
+\par Последовательная версия алгоритма будет реализована на основе стандартных инструментов языка, для параллельной версии будут задействованы библиотеки. При создании параллельной реализации с применением OpenMP нужно учесть, что программа будет выполняться на различном количестве потоков. Проверка корректности работы программы будет осуществляться с помощью фреймворка GoogleTest. Количество тестов должно быть не менее 5.
+	
+\par На основе полученных результатов необходимо сравнить скорости выполнения каждого варианта программы и сделать выводы.
+\newpage
+
+% Описание алгоритма
+\section*{Описание алгоритма}
+\addcontentsline{toc}{section}{Описание алгоритма}
+    \par Умножение матриц заключается в нахождении скалярных произведений строк первой матрицы и столбцов второй матрицы. Для того чтобы умножить две матрицы, необходимо, чтобы число столбцов первой матрицы совпадало с числом строк второй матрицы.
+    
+    \par При использовании CCS формата хранения матриц левую матрицу в операции умножения необходимо транспонировать, чтобы доступ к данным везде происходил по столбцам, лежащих в непрерывных участках памяти. Указатель на начало каждого столбца находится в массиве offset.
+    
+    \par Отличие использования CCS формата от хранения матриц в стандартном формате заключается в возможности итерироваться только по ненулевым элементам столбцов, что может существенно ускорить процесс.
+    
+    \par Элемент с$_{ij}$ результирующей матрицы получается перемножением i-го столбца транспонированной левой матрицы и j-го столбца правой матрицы.
+    
+    \par Формат хранения CCS требует также подсчёт числа ненулевых элементов в каждом столбце. При хранении нецелочисленных элементов нулевым элементом считаем элемент с модулем не превосходящим заданного порога.
+\newpage
+
+% Описание схемы распараллеливания
+\section*{Описание схемы распараллеливания}
+    \par При использовании формата хранения по столбцам (CCS) логично распараллеливать алгоритм по ним же. Поскольку результат вычисления каждого столбца результирующей матрицы не зависит от остальных, то параллельные реализации не требуют дополнительных усилий для обеспечения защиты потоков.
+    
+    \par Тем не менее подсчёт ненулевых символов и заполнение данными результирующей матрицы нужно выполнять после завершения всех подсчётов, поскольку заранее число ненулевых элементов неизвестно.
+\newpage
+
+% Описание программной реализации
+\section*{Описание программной реализации}
+\addcontentsline{toc}{section}{Описание программной реализации}
+Программа состоит из заголовочного файла \emph{ccs\_matrix.h} и двух файлов исходного кода \emph{ccs\_matrix.cpp} и \emph{main.cpp}.
+\par В заголовочном файле находятся прототипы функций для последовательного и параллельных алгоритмов.
+
+\par Класс разреженных матриц:
+\begin{lstlisting}
+class SparseMatrix {
+ public:
+  int rows, cols;
+  std::vector<int> column_idx;
+  std::vector<int> row_nums;
+  std::vector<double> values;
+  SparseMatrix() : rows(0), cols(0) {}
+  SparseMatrix(double* arr, int _rows, int _cols);
+  SparseMatrix(const SparseMatrix& lhs);
+  SparseMatrix& operator=(const SparseMatrix& lhs);
+  friend SparseMatrix operator*(const SparseMatrix& first,
+                                const SparseMatrix& second);
+  friend bool operator==(const SparseMatrix& first, const SparseMatrix& second);
+};
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textit{rows} -- число строк;
+    \item \textit{cols} -- число столбцов;
+    \item \textit{column\_idx} -- массив индексов столбцов;
+    \item \textit{row\_nums} -- массив номеров строк;
+    \item \textit{values} -- массив значений;
+    \item \textit{operator*} -- оператор умножения, последовательный алгоритм;
+\end{itemize}
+
+\par Параллельная функция алгоритма умножения матриц:
+\begin{lstlisting}
+SparseMatrix ParallelMultiplication(const SparseMatrix& first,
+                                    const SparseMatrix& second);
+\end{lstlisting}
+
+\par В файле исходного кода \emph{ccs\_matrix.cpp} содержится реализация функций, объявленных в заголовочном файле. В файле исходного кода \emph{main.cpp} содержатся тесты для проверки корректности программы.
+\newpage
+
+% Подтверждение корректности
+\section*{Подтверждение корректности}
+\addcontentsline{toc}{section}{Подтверждение корректности}
+\par Для подтверждения корректности работы программы на фрэймфорке Google Test были написаны 5 тестов для каждой реализации. В каждом тесте запускается умножение матриц разных размеров с разным наполнением.
+\par В последовательной реализации в каждом тесте мы просто запускаем алгоритм и сравниваем полученный результат с контрольным. В параллельных версиях мы запускаем оба алгоритма, последовательный и параллельный, и сравниваем результат работы каждого с контрольным значением.
+\newpage
+
+% Результаты экспериментов
+\section*{Результаты экспериментов}
+\addcontentsline{toc}{section}{Результаты экспериментов}
+Для проведения экспериментов по вычислению эффективности работы разных реализаций программы использовалась система со следующей конфигурацией:
+\begin{itemize}
+\item Процессор: AMD Ryzen 5600g, ядер: 6, потоков: 12;
+\item Оперативная память: 16 ГБ (DDR4), 4000 МГц;
+\item Операционная система: Windows 10 LTSC.
+\end{itemize}
+
+\par Результаты экспериментов:
+\begin{table}[!h]
+\centering
+\begin{tabular}{| c | c | c |}
+\hline
+Версия & Время работы (сек.) & Ускорение (раз) \\
+\hline
+Последовательный        & 0.0054642        & -         \\
+OpenMP        & 0.0029603        & 1.84          \\
+\hline
+\end{tabular}
+\caption{Результаты экспериментов}
+\end{table}
+
+\newpage
+
+% Выводы из результатов экспериментов
+\section*{Выводы из результатов экспериментов}
+\addcontentsline{toc}{section}{Выводы из результатов экспериментов}
+\par Из данных, полученных в результате экспериментов (см. Таблицу 1), можно сделать вывод, что параллельная реализация позволяет достичь ускорения по времени.
+\newpage
+
+% Заключение
+\section*{Заключение}
+\addcontentsline{toc}{section}{Заключение}
+Таким образом, в рамках данной лабораторной работы были разработаны последовательный и параллельный алгоритмы умножения разреженных матриц в формате CCS. Проведенные тесты показали корректность реализованной программы, а проведенные эксперименты доказали эффективность распараллеливания этого алгоритма.
+\newpage
+
+% Литература
+\section*{Литература}
+\addcontentsline{toc}{section}{Литература}
+\begin{enumerate}
+\item IFMO - Электронный ресурс. URL: \newline \url{http://aco.ifmo.ru/el_books/numerical_methods/lectures/glava2_1.html}
+\item Habr - Электронный ресурс. URL: \newline \url{https://habr.com/ru/post/479202/}
+\item Educative - Электронный ресурс. URL: \newline \url{https://www.educative.io/blog/modern-multithreading-and-concurrency-in-cpp}
+\item А.В. Сысоев, И.Б. Мееров, А.А. Сиднев «Средства разработки параллельных программ для систем с общей памятью. Библиотека Intel Threading Building Blocks». Нижний Новгород, 2007, 128 с. 
+\item А.В. Сысоев, И.Б. Мееров, А.Н. Свистунов, А.Л. Курылев, А.В. Сенин, А.В. Шишков, К.В. Корняков, А.А. Сиднев «Параллельное программирование в системах с общей
+памятью. Инструментальная поддержка». Нижний Новгород, 2007, 110 с. 
+\end{enumerate}
+
+
+\newpage
+
+\section*{Приложение}
+\addcontentsline{toc}{section}{Приложение}
+
+\begin{lstlisting}[language=C++]
+#include <ctime>
+#include <iostream>
+#include <queue>
+#include <random>
+#include <vector>
+class SparseMatrix {
+ public:
+  int rows, cols;
+  std::vector<int> column_idx;
+  std::vector<int> row_nums;
+  std::vector<double> values;
+  SparseMatrix() : rows(0), cols(0) {}
+  SparseMatrix(double* arr, int _rows, int _cols);
+  SparseMatrix(const SparseMatrix& lhs);
+  SparseMatrix& operator=(const SparseMatrix& lhs);
+  friend SparseMatrix operator*(const SparseMatrix& first,
+                                const SparseMatrix& second);
+  friend bool operator==(const SparseMatrix& first, const SparseMatrix& second);
+};
+void TransponationSparseMatrix(SparseMatrix* matrixPtr);
+SparseMatrix ParallelMultiplication(const SparseMatrix& first,
+                                    const SparseMatrix& second);
+double* create_random_matrix(int size_n);
+#endif  // MODULES_TASK_2_MATVEYEV_S_CCS_MATRIX_CCS_MATRIX_H_
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++]
+// Copyright 2023 Matveyev Sergey
+#include "../../../modules/task_2/matveyev_s_ccs_matrix/ccs_matrix.h"
+
+#include <omp.h>
+double* create_random_matrix(int size_n) {
+  std::random_device dev;
+  std::mt19937 gen(dev());
+  double* in = new double[size_n];
+  for (int i = 0; i < size_n; ++i) {
+    in[i] = static_cast<double>(gen()) / gen();
+    if ((i % 3 == 0)) in[i] = 0;
+  }
+  return in;
+}
+SparseMatrix::SparseMatrix(double* arr, int _rows, int _cols) {
+  rows = _rows;
+  cols = _cols;
+  bool f = true;
+  int num = 0;
+  for (int i = 0; i < cols; i++) {
+    for (int j = 0; j < rows; j++) {
+      if (arr[j * rows + i] != 0) {
+        if (f) {
+          column_idx.push_back(num);
+          f = false;
+        }
+        num++;
+        values.push_back(arr[j * rows + i]);
+        row_nums.push_back(j);
+      }
+    }
+    if (f) column_idx.push_back(num);
+    f = true;
+  }
+  column_idx.push_back(num);
+}
+
+SparseMatrix::SparseMatrix(const SparseMatrix& lhs)
+    : rows(lhs.rows),
+      cols(lhs.cols),
+      column_idx(lhs.column_idx),
+      row_nums(lhs.row_nums),
+      values(lhs.values) {}
+
+SparseMatrix& SparseMatrix::operator=(const SparseMatrix& lhs) {
+  if (this == &lhs) return (*this);
+  rows = lhs.rows;
+  cols = lhs.cols;
+  column_idx = lhs.column_idx;
+  row_nums = lhs.row_nums;
+  values = lhs.values;
+  return (*this);
+}
+SparseMatrix operator*(const SparseMatrix& first, const SparseMatrix& second) {
+  SparseMatrix Copy(first);
+  std::vector<int> row_nums;
+  std::vector<double> values;
+  std::vector<int> column_idx;
+  TransponationSparseMatrix(&Copy);
+  int current_idx = 0;
+  bool flag = true;
+  for (int i = 0; i < first.cols; i++) {
+    for (int j = 0; j < Copy.cols; j++) {
+      double res = 0;
+      int ls = second.column_idx[i];
+      int lf = second.column_idx[i + 1] - 1;
+      int ks = Copy.column_idx[j];
+      int kf = Copy.column_idx[j + 1] - 1;
+      while ((ks <= kf) && (ls <= lf)) {
+        if (Copy.row_nums[ks] == second.row_nums[ls]) {
+          res += Copy.values[ks] * second.values[ls];
+          ks++;
+          ls++;
+        } else {
+          if (Copy.row_nums[ks] < second.row_nums[ls]) {
+            ks++;
+          } else {
+            ls++;
+          }
+        }
+      }
+      if (res != 0) {
+        if (flag) {
+          column_idx.push_back(current_idx);
+          flag = false;
+        }
+        values.push_back(res);
+        row_nums.push_back(j);
+        current_idx++;
+      }
+    }
+    if (flag) column_idx.push_back(current_idx);
+    flag = true;
+  }
+  column_idx.push_back(current_idx);
+  Copy.row_nums = row_nums;
+  Copy.values = values;
+  Copy.column_idx = column_idx;
+  return Copy;
+}
+bool operator==(const SparseMatrix& first, const SparseMatrix& second) {
+  if (first.column_idx == second.column_idx && first.rows == second.rows &&
+      first.values == second.values && first.cols == second.cols &&
+      first.row_nums == second.row_nums)
+    return true;
+  return false;
+}
+void TransponationSparseMatrix(SparseMatrix* matrixPtr) {
+  int num = 0;
+  bool f = true;
+  std::vector<std::queue<int>> first(matrixPtr->rows);
+  std::vector<std::queue<double>> second(matrixPtr->rows);
+  std::vector<int> column_idx(matrixPtr->cols);
+  for (int i = 0; i < matrixPtr->cols; i++) {
+    for (int j = matrixPtr->column_idx[i];
+         j <= matrixPtr->column_idx[i + 1] - 1; j++) {
+      first[matrixPtr->row_nums[j]].push(i);
+      second[matrixPtr->row_nums[j]].push(matrixPtr->values[j]);
+    }
+  }
+  matrixPtr->row_nums.resize(0);
+  matrixPtr->values.resize(0);
+  for (int i = 0; i < matrixPtr->rows; i++) {
+    while (!second[i].empty()) {
+      if (f) {
+        column_idx[i] = num;
+        f = false;
+      }
+      matrixPtr->values.push_back(second[i].front());
+      second[i].pop();
+      matrixPtr->row_nums.push_back(first[i].front());
+      first[i].pop();
+      num += 1;
+    }
+    f = true;
+  }
+  column_idx.push_back(num);
+  matrixPtr->column_idx = column_idx;
+}
+
+SparseMatrix ParallelMultiplication(const SparseMatrix& f,
+                                    const SparseMatrix& s) {
+  SparseMatrix Copy(f);
+  std::vector<double> values;
+  std::vector<int> rows;
+  std::vector<int> column_idx(s.cols, 0);
+  std::vector<std::vector<int>> rows_p(omp_get_max_threads());
+  std::vector<std::vector<double>> values_p(omp_get_max_threads());
+  TransponationSparseMatrix(&Copy);
+#pragma omp parallel
+  {
+#pragma omp for
+    for (int i = 0; i < s.cols; i++) {
+      for (int j = 0; j < Copy.cols; j++) {
+        double res = 0;
+        int ls = s.column_idx[i];
+        int lf = s.column_idx[i + 1] - 1;
+        int ks = Copy.column_idx[j];
+        int kf = Copy.column_idx[j + 1] - 1;
+        while ((ks <= kf) && (ls <= lf)) {
+          if (Copy.row_nums[ks] == s.row_nums[ls]) {
+            res += Copy.values[ks] * s.values[ls];
+            ks++;
+            ls++;
+          } else {
+            if (Copy.row_nums[ks] < s.row_nums[ls]) {
+              ks++;
+            } else {
+              ls++;
+            }
+          }
+        }
+        if (res != 0) {
+          column_idx[i]++;
+          values_p[omp_get_thread_num()].push_back(res);
+          rows_p[omp_get_thread_num()].push_back(j);
+        }
+      }
+    }
+#pragma omp single
+    {
+      for (int i = 0; i < omp_get_num_threads(); i++) {
+        for (size_t j = 0; j < values_p[i].size(); j++) {
+          values.push_back(values_p[i][j]);
+          rows.push_back(rows_p[i][j]);
+        }
+      }
+      int sum = 0;
+      for (size_t i = 0; i < column_idx.size(); i++) {
+        int tmp = column_idx[i];
+        column_idx[i] = sum;
+        sum = tmp + sum;
+      }
+      column_idx.emplace_back(sum);
+    }
+  }
+  Copy.column_idx = column_idx;
+  Copy.row_nums = rows;
+  Copy.values = values;
+  return Copy;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++]
+// Copyright 2023 Matveyev Sergey
+#include <gtest/gtest.h>
+#include <omp.h>
+
+#include "../../../modules/task_2/matveyev_s_ccs_matrix/ccs_matrix.h"
+
+TEST(CCS_MATRIX_MULT_OMP, CREATE_MATRIX) {
+  double* arr = create_random_matrix(4);
+  SparseMatrix A(arr, 2, 2);
+  SparseMatrix B(arr, 2, 2);
+  ASSERT_EQ(1, 1);
+}
+
+TEST(CCS_MATRIX_MULT_OMP, TRANSPOSE) {
+  double arr[] = {1, 0, 0, 2};
+  double arr2[] = {0, 3, 7, 0};
+  double arr3[] = {0, 3, 14, 0};
+  SparseMatrix A(arr, 2, 2);
+  SparseMatrix B(arr2, 2, 2);
+  SparseMatrix C(arr3, 2, 2);
+  ASSERT_EQ(C, A * B);
+}
+
+TEST(CCS_MATRIX_MULT_OMP, MULT_1) {
+  double ptr1[] = {0, 5, 0, 0, 1, 0, 3, 0, 8};
+  double ptr2[] = {1, 0, 0, 0, 0, 1, 0, 0, 4};
+  double ptr3[] = {0, 0, 5, 0, 0, 1, 3, 0, 32};
+  SparseMatrix A(ptr1, 3, 3);
+  SparseMatrix B(ptr2, 3, 3);
+  SparseMatrix C(ptr3, 3, 3);
+  ASSERT_EQ(C == A * B, true);
+}
+
+TEST(SPARSE_MATRIX_MULT_OMP, MULT_2) {
+  int count = 100;
+  double* ptr1 = create_random_matrix(count * count);
+  double* ptr2 = create_random_matrix(count * count);
+  SparseMatrix A(ptr1, count, count);
+  SparseMatrix B(ptr2, count, count);
+  delete[] ptr1;
+  delete[] ptr2;
+  double start_seq = omp_get_wtime();
+  SparseMatrix C = A * B;
+   double end_seq = omp_get_wtime();
+   double seq_time = end_seq - start_seq;
+   double start_omp = omp_get_wtime();
+  SparseMatrix D = ParallelMultiplication(A, B);
+   double end_omp = omp_get_wtime();
+   double omp_time = end_omp - start_omp;
+   std::cout << "seq time: " << seq_time << "\n";
+   std::cout << "omp time: " << omp_time << "\n";
+   std::cout << "a: " << seq_time / omp_time << "\n";
+  ASSERT_EQ(D, C);
+}
+
+TEST(SPARSE_MATRIX_MULT_OMP, MULT_3) {
+  int count = 120;
+  double* ptr1 = create_random_matrix(count * count);
+  double* ptr2 = create_random_matrix(count * count);
+  SparseMatrix A(ptr1, count, count);
+  SparseMatrix B(ptr2, count, count);
+  delete[] ptr1;
+  delete[] ptr2;
+   double start_seq = omp_get_wtime();
+  SparseMatrix C = A * B;
+   double end_seq = omp_get_wtime();
+   double seq_time = end_seq - start_seq;
+   double start_omp = omp_get_wtime();
+  SparseMatrix D = ParallelMultiplication(A, B);
+   double end_omp = omp_get_wtime();
+   double omp_time = end_omp - start_omp;
+   std::cout << "seq time: " << seq_time << "\n";
+   std::cout << "omp time: " << omp_time << "\n";
+   std::cout << "a: " << seq_time / omp_time << "\n";
+  ASSERT_EQ(D, C);
+}
+TEST(SPARSE_MATRIX_MULT_OMP, MULT_4) {
+  int count = 150;
+  double* ptr1 = create_random_matrix(count * count);
+  double* ptr2 = create_random_matrix(count * count);
+  SparseMatrix A(ptr1, count, count);
+  SparseMatrix B(ptr2, count, count);
+  delete[] ptr1;
+  delete[] ptr2;
+   double start_seq = omp_get_wtime();
+  SparseMatrix C = A * B;
+   double end_seq = omp_get_wtime();
+   double seq_time = end_seq - start_seq;
+   double start_omp = omp_get_wtime();
+  SparseMatrix D = ParallelMultiplication(A, B);
+   double end_omp = omp_get_wtime();
+   double omp_time = end_omp - start_omp;
+   std::cout << "seq time: " << seq_time << "\n";
+   std::cout << "omp time: " << omp_time << "\n";
+   std::cout << "a: " << seq_time / omp_time << "\n";
+  ASSERT_EQ(D, C);
+}
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+\end{lstlisting}
+
+\end{document}
